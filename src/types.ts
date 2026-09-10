@@ -1,3 +1,11 @@
+export interface Toast {
+  id: string;
+  message: string;
+  type: 'success' | 'info' | 'warning' | 'error';
+}
+
+export type ToastType = Toast['type'];
+
 export interface DecisionOption {
   id: string;
   text: string;

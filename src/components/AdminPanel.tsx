@@ -17,6 +17,7 @@ import {
   Search
 } from 'lucide-react';
 import { TeamMember, Decision } from '../types';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface AdminPanelProps {
   members: TeamMember[];
@@ -50,24 +51,63 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onExtendDeadline,
   onExpireImmediately
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'members' | 'decisions'>('members');
+  const [activeSubTab, setActiveSubTab] = useState<'members' | 'decisions' | 'settings'>('members');
   
+  // Settings state
+  const [adminName, setAdminName] = useState(localStorage.getItem('adminName') || '');
+  const [adminEmail, setAdminEmail] = useState(localStorage.getItem('adminEmail') || '');
+  const [companyName, setCompanyName] = useState(localStorage.getItem('companyName') || '');
+  const [companyIndustry, setCompanyIndustry] = useState(localStorage.getItem('companyIndustry') || '');
+
+  // Persist settings on change (simplified for now)
+  const saveSettings = () => {
+    localStorage.setItem('adminName', adminName);
+    localStorage.setItem('adminEmail', adminEmail);
+    localStorage.setItem('companyName', companyName);
+    localStorage.setItem('companyIndustry', companyIndustry);
+    alert('Impostazioni salvate!');
+  };
+
   // New Member state
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberRole, setNewMemberRole] = useState('');
   const [newMemberStatus, setNewMemberStatus] = useState('Attivo');
   const [selectedAvatarUrl, setSelectedAvatarUrl] = useState(PRESET_AVATARS[0].url);
-  const [showCustomAvatarField, setShowCustomAvatarField] = useState(false);
+  const [showCustomAvatarField, setShowCustomAvatarField] = useState<'preset' | 'url' | 'upload'>('preset');
   const [customAvatarUrl, setCustomAvatarUrl] = useState('');
+  const [uploadedAvatar, setUploadedAvatar] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const [copiedInvite, setCopiedInvite] = useState(false);
 
   // Search filter inside admin
   const [adminSearch, setAdminSearch] = useState('');
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+
+  const openConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmState({ isOpen: true, title, message, onConfirm });
+  };
+
+  const handleCopyInviteLink = () => {
+    const inviteUrl = `${window.location.origin}/?action=invite-member`;
+    navigator.clipboard.writeText(inviteUrl).then(() => {
+      setCopiedInvite(true);
+      setTimeout(() => setCopiedInvite(false), 2000);
+    });
+  };
 
   const handleCreateMember = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMemberName.trim() || !newMemberRole.trim()) return;
 
-    const finalAvatar = showCustomAvatarField && customAvatarUrl.trim()
+    const finalAvatar = showCustomAvatarField === 'upload' && uploadedAvatar
+      ? uploadedAvatar
+      : showCustomAvatarField === 'url' && customAvatarUrl.trim()
       ? customAvatarUrl.trim()
       : selectedAvatarUrl;
 
@@ -83,7 +123,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setNewMemberRole('');
     setNewMemberStatus('Attivo');
     setCustomAvatarUrl('');
-    setShowCustomAvatarField(false);
+    setUploadedAvatar(null);
+    setShowCustomAvatarField('preset');
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUploadedAvatar(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const filteredMembers = members.filter(m => 
@@ -137,6 +189,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           >
             <Vote className="w-3.5 h-3.5" />
             Gestione Sondaggi ({decisions.length})
+          </button>
+          <button
+            onClick={() => { setActiveSubTab('settings'); setAdminSearch(''); }}
+            className={`flex-1 sm:flex-none flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+              activeSubTab === 'settings'
+                ? 'bg-white text-gray-950 shadow-xs'
+                : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            <Briefcase className="w-3.5 h-3.5" />
+            Impostazioni
           </button>
         </div>
       </div>
@@ -199,16 +262,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div>
                   <div className="flex justify-between items-center mb-1.5">
                     <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Foto Profilo (Avatar)</label>
-                    <button
-                      type="button"
-                      onClick={() => setShowCustomAvatarField(!showCustomAvatarField)}
-                      className="text-[10px] font-bold text-blue-600 hover:underline transition"
-                    >
-                      {showCustomAvatarField ? 'Scegli da predefiniti' : 'Inserisci URL personalizzato'}
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowCustomAvatarField(showCustomAvatarField === 'url' ? 'preset' : 'url')}
+                        className={`text-[10px] font-bold ${showCustomAvatarField === 'url' ? 'text-blue-600 underline' : 'text-gray-400 hover:text-blue-600'} transition`}
+                      >
+                        URL
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowCustomAvatarField(showCustomAvatarField === 'upload' ? 'preset' : 'upload')}
+                        className={`text-[10px] font-bold ${showCustomAvatarField === 'upload' ? 'text-blue-600 underline' : 'text-gray-400 hover:text-blue-600'} transition`}
+                      >
+                        Upload
+                      </button>
+                    </div>
                   </div>
 
-                  {showCustomAvatarField ? (
+                  {showCustomAvatarField === 'url' ? (
                     <input
                       type="url"
                       required
@@ -217,6 +289,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       placeholder="https://images.unsplash.com/..."
                       className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs text-gray-900 placeholder-slate-400 transition"
                     />
+                  ) : showCustomAvatarField === 'upload' ? (
+                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-blue-400 transition" onClick={() => fileInputRef.current?.click()}>
+                      <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" ref={fileInputRef} />
+                      {uploadedAvatar ? (
+                        <img src={uploadedAvatar} alt="Upload" className="w-16 h-16 rounded-full object-cover" />
+                      ) : (
+                        <>
+                          <Plus className="w-6 h-6 text-gray-400" />
+                          <span className="text-[10px] font-bold text-gray-500">Clicca per caricare</span>
+                        </>
+                      )}
+                    </div>
                   ) : (
                     <div className="grid grid-cols-4 gap-2.5 bg-gray-50 p-3 rounded-xl border border-gray-150">
                       {PRESET_AVATARS.map((avatar, idx) => (
@@ -249,6 +333,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   Crea e Aggiungi Membro
                 </button>
               </form>
+              <div className="pt-4 border-t border-gray-100 mt-2">
+                <button
+                  type="button"
+                  onClick={handleCopyInviteLink}
+                  className="w-full flex items-center justify-center gap-2 bg-gray-50 hover:bg-gray-100 text-gray-600 text-xs font-bold py-3 rounded-xl transition duration-150 border border-gray-200 cursor-pointer"
+                >
+                  {copiedInvite ? <Check className="w-4 h-4 text-emerald-600" /> : <Users className="w-4 h-4" />}
+                  {copiedInvite ? 'Link copiato!' : 'Copia link invito membro'}
+                </button>
+              </div>
             </div>
 
             {/* Members Directory - Right Columns */}
@@ -301,9 +395,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         {member.name !== 'Tu' ? (
                           <button
                             onClick={() => {
-                              if (confirm(`Rimuovere ${member.name} dal team? Non riceverà più notifiche né prenderà parte ai sondaggi.`)) {
-                                onDeleteMember(member.id);
-                              }
+                              openConfirm(
+                                'Rimuovere membro',
+                                `Rimuovere ${member.name} dal team? Non riceverà più notifiche né prenderà parte ai sondaggi.`,
+                                () => onDeleteMember(member.id)
+                              );
                             }}
                             className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                             title="Rimuovi dal team"
@@ -353,128 +449,60 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </>
         )}
 
-        {/* TAB 2: DECISIONS / VERDICTS DATABASE MANAGEMENT */}
-        {activeSubTab === 'decisions' && (
+        {/* TAB 3: SETTINGS */}
+        {activeSubTab === 'settings' && (
           <div className="bg-white border border-gray-200 rounded-3xl p-6.5 space-y-6 lg:col-span-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
-              <div>
-                <h2 className="text-sm font-bold text-gray-950 font-display">Pannello Controllo Proposte ({decisions.length})</h2>
-                <p className="text-[11px] text-gray-400 mt-0.5">Controllo delle proposte create nel sistema: estendi date, chiudi anticipatamente o elimina.</p>
-              </div>
+            <div className="border-b border-gray-100 pb-4">
+                <h2 className="text-sm font-bold text-gray-950 font-display">Impostazioni Amministratore e Azienda</h2>
+                <p className="text-[11px] text-gray-400 mt-0.5">Gestisci i dettagli del profilo amministratore e le informazioni aziendali.</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                    <h3 className="text-xs font-bold text-gray-900">Profilo Amministratore</h3>
+                    <div>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nome Amministratore</label>
+                        <input type="text" value={adminName} onChange={(e) => setAdminName(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs text-gray-900" />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Email Amministratore</label>
+                        <input type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs text-gray-900" />
+                    </div>
+                </div>
 
-              {/* Micro search bar */}
-              <div className="relative w-full sm:w-64">
-                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={adminSearch}
-                  onChange={(e) => setAdminSearch(e.target.value)}
-                  placeholder="Cerca verdict per titolo..."
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg py-1.5 pl-8 pr-3 text-[11px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                />
-              </div>
+                <div className="space-y-4">
+                    <h3 className="text-xs font-bold text-gray-900">Dettagli Azienda</h3>
+                    <div>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nome Società/Gruppo</label>
+                        <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs text-gray-900" />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Settore/Industria</label>
+                        <input type="text" value={companyIndustry} onChange={(e) => setCompanyIndustry(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs text-gray-900" />
+                    </div>
+                </div>
             </div>
 
-            {filteredDecisions.length === 0 ? (
-              <div className="py-12 text-center text-gray-400 text-xs">
-                Nessuna proposta trovata.
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredDecisions.map((decision) => {
-                  const totalVotes = decision.options.reduce((sum, opt) => sum + opt.votes, 0);
-                  const isExpired = new Date(decision.deadline).getTime() < Date.now();
-                  
-                  return (
-                    <div
-                      key={decision.id}
-                      className="p-4 bg-gray-50 border border-gray-200 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:border-gray-300 transition"
-                    >
-                      {/* Left: Info details */}
-                      <div className="space-y-1.5 min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
-                            {decision.category}
-                          </span>
-                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
-                            isExpired
-                              ? 'bg-rose-50 text-rose-700 border border-rose-100'
-                              : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                          }`}>
-                            {isExpired ? 'Concluso' : 'Attivo'}
-                          </span>
-                          <span className="text-[10px] text-gray-400 font-bold">
-                            Tipo: <span className="font-semibold text-gray-600">{decision.type}</span>
-                          </span>
-                        </div>
-                        <h3 className="text-xs font-bold text-gray-900 truncate leading-tight">{decision.title}</h3>
-                        <p className="text-[10px] text-gray-400">
-                          Autore: <span className="font-bold text-gray-600">{decision.creator.name}</span> • Scadenza: <span className="font-mono text-gray-500">{new Date(decision.deadline).toLocaleString('it-IT')}</span>
-                        </p>
-                      </div>
-
-                      {/* Middle: Vote counts info */}
-                      <div className="shrink-0 bg-white border border-gray-150 px-3 py-1.5 rounded-xl text-center">
-                        <span className="text-xs font-black text-gray-900 block">{totalVotes}</span>
-                        <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Voti Totali</span>
-                      </div>
-
-                      {/* Right: Actions */}
-                      <div className="flex items-center gap-1.5 self-stretch md:self-auto justify-end">
-                        {/* Extend deadline */}
-                        {!isExpired && (
-                          <button
-                            onClick={() => {
-                              onExtendDeadline(decision.id, 24);
-                              alert('Scadenza prorogata di 24 ore con successo!');
-                            }}
-                            className="bg-white hover:bg-gray-100 border border-gray-200 hover:border-gray-300 text-slate-600 text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition flex items-center gap-1 cursor-pointer"
-                            title="Proroga di 24 ore"
-                          >
-                            <Clock className="w-3 h-3 text-blue-500" />
-                            +24 Ore
-                          </button>
-                        )}
-
-                        {/* Force close early */}
-                        {!isExpired && (
-                          <button
-                            onClick={() => {
-                              if (confirm('Sei sicuro di voler chiudere questo sondaggio immediatamente? Sarà contrassegnato come Concluso.')) {
-                                onExpireImmediately(decision.id);
-                              }
-                            }}
-                            className="bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition flex items-center gap-1 cursor-pointer"
-                            title="Chiudi ora"
-                          >
-                            <Calendar className="w-3 h-3 text-amber-600" />
-                            Chiudi Ora
-                          </button>
-                        )}
-
-                        {/* Delete proposal */}
-                        <button
-                          onClick={() => {
-                            if (confirm('Azioni di controllo: Sei assolutamente sicuro di voler eliminare definitivamente questo Verdict dal database? Questa azione non è reversibile.')) {
-                              onDeleteDecision(decision.id);
-                            }
-                          }}
-                          className="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition flex items-center gap-1 cursor-pointer"
-                          title="Elimina Verdict"
-                        >
-                          <Trash2 className="w-3 h-3 text-rose-600" />
-                          Elimina
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <div className="pt-4 border-t border-gray-100 flex justify-end">
+                <button
+                  onClick={saveSettings}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-6 py-2.5 rounded-xl transition cursor-pointer shadow-sm"
+                >
+                  Salva Modifiche
+                </button>
+            </div>
           </div>
         )}
 
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmState.isOpen}
+        onClose={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmState.onConfirm}
+        title={confirmState.title}
+        message={confirmState.message}
+      />
     </div>
   );
 };

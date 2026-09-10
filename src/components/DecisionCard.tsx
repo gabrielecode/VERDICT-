@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
-import { Clock, CheckSquare, MessageSquare, Globe, Lock, Shield } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Clock, CheckSquare, MessageSquare, Globe, Lock, Shield, Copy, Check } from 'lucide-react';
 import { Decision } from '../types';
 import { getTimeRemaining, getCategoryStyles, formatDate, TimeRemaining } from '../utils';
 
@@ -11,6 +11,7 @@ interface DecisionCardProps {
 
 export const DecisionCard: React.FC<DecisionCardProps> = ({ decision, onClick }) => {
   const [timeLeft, setTimeLeft] = useState<TimeRemaining>(getTimeRemaining(decision.deadline));
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -34,6 +35,15 @@ export const DecisionCard: React.FC<DecisionCardProps> = ({ decision, onClick })
     badgeColor = 'bg-red-50 text-red-600 border-red-200';
     statusText = 'In scadenza';
   }
+
+  const handleCopyLink = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const shareUrl = `${window.location.origin}?decisionId=${decision.id}`;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   return (
     <motion.div
@@ -67,11 +77,20 @@ export const DecisionCard: React.FC<DecisionCardProps> = ({ decision, onClick })
             </span>
           </div>
         </div>
-
-        {/* Title */}
-        <h3 className="text-lg font-bold text-gray-900 tracking-tight leading-snug mb-2 hover:text-blue-600 transition-colors">
-          {decision.title}
-        </h3>
+        
+        <div className="flex justify-between items-start mb-2 gap-2">
+            {/* Title */}
+            <h3 className="text-lg font-bold text-gray-900 tracking-tight leading-snug hover:text-blue-600 transition-colors">
+                {decision.title}
+            </h3>
+            <button 
+                onClick={handleCopyLink}
+                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition shrink-0"
+                title="Copia link"
+            >
+                {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+            </button>
+        </div>
 
         {/* Short Description */}
         <p className="text-slate-500 text-sm line-clamp-2 mb-6 font-normal">

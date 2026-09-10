@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 import {
   Clock,
   ArrowLeft,
@@ -11,7 +13,9 @@ import {
   Star,
   Check,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  FileText,
+  FileDown
 } from 'lucide-react';
 import { Decision, DecisionOption, Comment } from '../types';
 import { getTimeRemaining, getCategoryStyles, formatDate, TimeRemaining } from '../utils';
@@ -73,6 +77,34 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
       setCopied(true);
       setTimeout(() => setCopied(false), 3000);
     });
+  };
+
+  // Export CSV
+  const handleExportCSV = () => {
+    const headers = ['Opzione', 'Voti'];
+    const rows = decision.options.map(opt => [opt.text, opt.votes]);
+    const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `risultati_${decision.title.replace(/\s+/g, '_')}.csv`);
+    link.click();
+  };
+
+  // Export PDF
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    doc.text(`Risultati: ${decision.title}`, 10, 10);
+    
+    const tableData = decision.options.map(opt => [opt.text, opt.votes]);
+    (doc as any).autoTable({
+      head: [['Opzione', 'Voti']],
+      body: tableData,
+      startY: 20,
+    });
+    
+    doc.save(`risultati_${decision.title.replace(/\s+/g, '_')}.pdf`);
   };
 
   const handleVoteSubmit = (optionId: string) => {
@@ -155,6 +187,23 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
               )}
             </AnimatePresence>
           </button>
+          
+          {/* Export Buttons */}
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 text-xs font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-4 py-2.5 rounded-xl transition cursor-pointer"
+          >
+            <FileText className="w-4 h-4" />
+            CSV
+          </button>
+          
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center gap-2 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 px-4 py-2.5 rounded-xl transition cursor-pointer"
+          >
+            <FileDown className="w-4 h-4" />
+            PDF
+          </button>
         </div>
       </div>
 
@@ -235,12 +284,13 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
                       <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Seleziona le stelle</span>
                       <div className="flex gap-2">
                         {[1, 2, 3, 4, 5].map((starValue) => (
-                          <button
+                          <motion.button
                             key={starValue}
                             onMouseEnter={() => setHoverRating(starValue)}
                             onMouseLeave={() => setHoverRating(null)}
                             onClick={() => handleRatingSubmit(starValue)}
-                            className="p-1 cursor-pointer transition-transform transform active:scale-95"
+                            whileTap={{ scale: 0.9 }}
+                            className="p-1 cursor-pointer"
                           >
                             <Star
                               className={`w-10 h-10 transition-colors ${
@@ -249,7 +299,7 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
                                   : 'text-gray-200 hover:text-amber-300'
                               }`}
                             />
-                          </button>
+                          </motion.button>
                         ))}
                       </div>
                       <p className="text-xs text-gray-400 mt-4 font-normal">Fai clic su una stella per pubblicare la tua valutazione</p>
@@ -379,9 +429,10 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
                           </div>
                         ) : (
                           /* ACTIVE INTERACTIVE VOTING STATE - LARGE CLICKABLE CARDS */
-                          <button
+                          <motion.button
                             disabled={isExpired}
                             onClick={() => handleVoteSubmit(opt.id)}
+                            whileTap={{ scale: 0.98 }}
                             className={`w-full text-left border-2 rounded-2xl p-5 cursor-pointer transition flex items-center gap-4 ${
                               isOptionSelected
                                 ? 'border-blue-600 bg-blue-50/20 shadow-xs'
@@ -416,7 +467,7 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
                                 </div>
                               )}
                             </div>
-                          </button>
+                          </motion.button>
                         )}
                       </div>
                     );

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Vote,
@@ -18,12 +18,13 @@ import {
   Check,
   ShieldCheck
 } from 'lucide-react';
-import { Decision, Comment, TeamMember } from './types';
+import { Decision, Comment, TeamMember, Toast, ToastType } from './types';
 import { MOCK_DECISIONS } from './mockData';
 import { DecisionCard } from './components/DecisionCard';
 import { CreationModal } from './components/CreationModal';
 import { DecisionDetail } from './components/DecisionDetail';
 import { AdminPanel } from './components/AdminPanel';
+import { ToastContainer } from './components/ToastContainer';
 import { getTimeRemaining } from './utils';
 
 // Initial dynamic team members list for local storage
@@ -78,6 +79,40 @@ export default function App() {
   const [statusFilter, setStatusFilter] = useState<'tutti' | 'attivi' | 'chiusura' | 'conclusi'>('tutti');
   const [activeMenuTab, setActiveMenuTab] = useState<'dashboard' | 'archived' | 'admin'>('dashboard');
 
+  // Toast state
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const addToast = (message: string, type: ToastType) => {
+    const id = Date.now().toString();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 5000);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
+  const notifiedExpired = useRef<Set<string>>(new Set(
+    decisions.filter(d => new Date(d.deadline).getTime() < Date.now()).map(d => d.id)
+  ));
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      decisions.forEach(d => {
+        const deadline = new Date(d.deadline).getTime();
+        // If expired within last 5 seconds and not notified
+        if (deadline < now && deadline > now - 5000 && !notifiedExpired.current.has(d.id)) {
+          notifiedExpired.current.add(d.id);
+          addToast(`La decisione "${d.title}" è scaduta!`, 'warning');
+        }
+      });
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [decisions]);
+
   // Deep Link Parser: instantly open specific decision if decisionId is present in search queries
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -113,6 +148,7 @@ export default function App() {
     // Focus on the newly created decision immediately!
     setSelectedDecisionId(newDecision.id);
     setActiveMenuTab('dashboard');
+    addToast('Nuova decisione pubblicata con successo!', 'success');
   };
 
   // Admin Handlers for Team Members
@@ -282,6 +318,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row font-sans selection:bg-blue-100 selection:text-blue-900">
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
       
       {/* LEFT SIDEBAR - Responsive desktop view */}
       <aside className="w-full md:w-68 shrink-0 bg-white border-b md:border-b-0 md:border-r border-gray-200 flex flex-col justify-between sticky top-0 md:h-screen z-30">
