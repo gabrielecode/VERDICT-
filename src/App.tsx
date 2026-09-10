@@ -16,7 +16,10 @@ import {
   LayoutDashboard,
   X,
   Check,
-  ShieldCheck
+  ShieldCheck,
+  Menu,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { Decision, Comment, TeamMember, Toast, ToastType } from './types';
 import { MOCK_DECISIONS } from './mockData';
@@ -29,15 +32,23 @@ import { getTimeRemaining } from './utils';
 
 // Initial dynamic team members list for local storage
 const INITIAL_TEAM_MEMBERS: TeamMember[] = [
-  { id: 'mem-1', name: 'Sofia Valenti', role: 'Head of Product', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&q=80', status: 'Attiva' },
-  { id: 'mem-2', name: 'Marco Gatti', role: 'Tech Lead', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&q=80', status: 'In riunione' },
-  { id: 'mem-3', name: 'Andrea Leone', role: 'Senior UX Designer', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&q=80', status: 'Attivo' },
-  { id: 'mem-4', name: 'Laura Bianchi', role: 'HR Manager', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&q=80', status: 'Fuori ufficio' },
-  { id: 'mem-5', name: 'Tu', role: 'Decision Maker', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces&q=80', status: 'Disponibile' }
+  { id: 'mem-1', name: 'Sofia', surname: 'Valenti', department: 'Prodotto', email: 'sofia@verdict.it', phone: '+39 02 5550192', role: 'Head of Product', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&q=80', status: 'Attiva' },
+  { id: 'mem-2', name: 'Marco', surname: 'Gatti', department: 'Ingegneria', email: 'marco@verdict.it', phone: '+39 02 5550193', role: 'Tech Lead', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&q=80', status: 'In riunione' },
+  { id: 'mem-3', name: 'Andrea', surname: 'Leone', department: 'Design', email: 'andrea@verdict.it', phone: '+39 02 5550194', role: 'Senior UX Designer', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&q=80', status: 'Attivo' },
+  { id: 'mem-4', name: 'Laura', surname: 'Bianchi', department: 'HR', email: 'laura@verdict.it', phone: '+39 02 5550195', role: 'HR Manager', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&q=80', status: 'Fuori ufficio' },
+  { id: 'mem-5', name: 'Tu', surname: '(Admin)', department: 'Direzione', email: 'tu@verdict.it', phone: '+39 02 5550196', role: 'Decision Maker', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces&q=80', status: 'Disponibile' }
 ];
 
-
 export default function App() {
+  const [isDark, setIsDark] = useState(() => {
+    return localStorage.getItem('verdict_dark_mode_v1') === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('verdict_dark_mode_v1', String(isDark));
+    document.documentElement.classList.toggle('dark', isDark);
+  }, [isDark]);
+  
   // Main decisions state loaded from LocalStorage or falling back to beautiful default MOCK_DECISIONS
   const [decisions, setDecisions] = useState<Decision[]>(() => {
     try {
@@ -78,6 +89,7 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState('Tutte');
   const [statusFilter, setStatusFilter] = useState<'tutti' | 'attivi' | 'chiusura' | 'conclusi'>('tutti');
   const [activeMenuTab, setActiveMenuTab] = useState<'dashboard' | 'archived' | 'admin'>('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Toast state
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -215,7 +227,7 @@ export default function App() {
             return { ...opt, votes: opt.votes + 1 };
           }
           // For ratings
-          if (d.type === 'rating' && ratingValue !== undefined && opt.id === String(ratingValue)) {
+          if (d.type === 'rating' && ratingValue !== undefined && (d.options.indexOf(opt) + 1) === ratingValue) {
             return { ...opt, votes: opt.votes + 1 };
           }
           return opt;
@@ -316,37 +328,51 @@ export default function App() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row font-sans selection:bg-blue-100 selection:text-blue-900">
+    return (
+    <div className={`min-h-screen ${isDark ? 'bg-gray-950 text-white dark' : 'bg-gray-50 text-gray-900'} flex flex-col md:flex-row font-sans selection:bg-blue-100 selection:text-blue-900`}>
       <ToastContainer toasts={toasts} removeToast={removeToast} />
       
       {/* LEFT SIDEBAR - Responsive desktop view */}
-      <aside className="w-full md:w-68 shrink-0 bg-white border-b md:border-b-0 md:border-r border-gray-200 flex flex-col justify-between sticky top-0 md:h-screen z-30">
+      <aside className="w-full md:w-68 shrink-0 bg-white dark:bg-gray-950 border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-800 flex flex-col justify-between md:sticky md:top-0 md:h-screen z-30">
         <div>
           {/* Brand Logo & Header */}
           <div className="px-6 py-5.5 flex items-center justify-between border-b border-gray-100">
-            <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => { setSelectedDecisionId(null); setActiveMenuTab('dashboard'); }}>
-              <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-blue-100">
-                <Vote className="w-5 h-5 stroke-[2.5]" />
-              </div>
-              <div>
-                <span className="font-display font-bold text-lg text-gray-900 tracking-tight block">Verdict</span>
-                <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest mt-[-2px] block">Collettivo</span>
+            <div className="flex items-center gap-2">
+              <button className="md:hidden p-1.5 -ml-2 text-gray-600" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+                <Menu className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => { setSelectedDecisionId(null); setActiveMenuTab('dashboard'); }}>
+                <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-blue-100">
+                  <Vote className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <div>
+                  <span className="font-display font-bold text-lg text-gray-950 dark:text-white tracking-tight block">Verdict</span>
+                  <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mt-[-2px] block">Collettivo</span>
+                </div>
               </div>
             </div>
 
-            {/* Database Reset button directly available in header */}
-            <button
-              onClick={handleResetDatabase}
-              title="Ripristina database originale"
-              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition cursor-pointer md:hidden"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
+            {/* Dark Mode toggle & Database Reset */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setIsDark(!isDark)}
+                title={isDark ? 'Passa a Light Mode' : 'Passa a Dark Mode'}
+                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-gray-50 dark:hover:bg-gray-900 rounded-lg transition cursor-pointer"
+              >
+                {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600 dark:text-slate-300" />}
+              </button>
+              <button
+                onClick={handleResetDatabase}
+                title="Ripristina database originale"
+                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-gray-50 dark:hover:bg-gray-900 rounded-lg transition cursor-pointer"
+              >
+                <RefreshCw className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              </button>
+            </div>
           </div>
 
           {/* Navigation Links */}
-          <nav className="p-4 space-y-1.5">
+          <nav className={`p-4 space-y-1.5 ${isSidebarOpen ? 'block' : 'hidden md:block'}`}>
             {/* Dashboard menu tab */}
             <button
               onClick={() => {
@@ -355,11 +381,11 @@ export default function App() {
               }}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold tracking-tight transition cursor-pointer text-left ${
                 activeMenuTab === 'dashboard' && !selectedDecisionId
-                  ? 'bg-gray-100 text-blue-600'
-                  : 'text-gray-600 hover:bg-gray-50'
+                  ? 'bg-gray-100 dark:bg-gray-900 text-blue-600 dark:text-blue-400'
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900'
               }`}
             >
-              <LayoutDashboard className="w-4 h-4 text-gray-500" />
+              <LayoutDashboard className="w-4 h-4 text-gray-500 dark:text-gray-400" />
               Dashboard
             </button>
 
@@ -371,11 +397,11 @@ export default function App() {
               }}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold tracking-tight transition cursor-pointer text-left ${
                 activeMenuTab === 'archived' && !selectedDecisionId
-                  ? 'bg-gray-100 text-blue-600'
-                  : 'text-gray-600 hover:bg-gray-50'
+                  ? 'bg-gray-100 dark:bg-gray-900 text-blue-600 dark:text-blue-400'
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900'
               }`}
             >
-              <Archive className="w-4 h-4 text-gray-500" />
+              <Archive className="w-4 h-4 text-gray-500 dark:text-gray-400" />
               Decisioni Archiviate
             </button>
 
@@ -387,27 +413,27 @@ export default function App() {
               }}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold tracking-tight transition cursor-pointer text-left ${
                 activeMenuTab === 'admin' && !selectedDecisionId
-                  ? 'bg-gray-100 text-blue-600'
-                  : 'text-gray-600 hover:bg-gray-50'
+                  ? 'bg-gray-100 dark:bg-gray-900 text-blue-600 dark:text-blue-400'
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900'
               }`}
             >
-              <ShieldCheck className="w-4 h-4 text-gray-500" />
+              <ShieldCheck className="w-4 h-4 text-gray-500 dark:text-gray-400" />
               Pannello Admin
             </button>
 
             {/* Team Directory trigger */}
             <button
               onClick={() => setShowTeamModal(true)}
-              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold tracking-tight text-gray-600 hover:bg-gray-50 transition cursor-pointer text-left"
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold tracking-tight text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900 transition cursor-pointer text-left"
             >
-              <Users className="w-4 h-4 text-gray-500" />
+              <Users className="w-4 h-4 text-gray-500 dark:text-gray-400" />
               Team Directory
             </button>
           </nav>
         </div>
 
         {/* Create and User Info bottom section */}
-        <div className="p-4 border-t border-gray-100 bg-gray-50/50 space-y-3.5">
+        <div className={`p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 space-y-3.5 ${isSidebarOpen ? 'block' : 'hidden md:block'}`}>
           {/* Action: Create New Decision */}
           <button
             onClick={() => setIsCreateModalOpen(true)}
@@ -426,7 +452,7 @@ export default function App() {
               className="w-8 h-8 rounded-full object-cover border border-gray-200"
             />
             <div className="min-w-0 flex-1">
-              <span className="text-[11px] font-bold text-gray-800 block truncate leading-tight">Tu (Visitatore)</span>
+              <span className="text-[11px] font-bold text-gray-800 block truncate leading-tight">{localStorage.getItem('adminName') || 'Tu (Visitatore)'}</span>
               <span className="text-[9px] text-gray-400 block truncate font-medium">Decision Maker</span>
             </div>
             {/* Database Reset on desktop */}
@@ -768,7 +794,6 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
-
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
@@ -15,7 +15,9 @@ import {
   Globe,
   Lock,
   Shield,
-  Eye
+  Eye,
+  Paperclip,
+  Upload
 } from 'lucide-react';
 import { Decision, DecisionType, DecisionAudience, DecisionOption } from '../types';
 
@@ -41,6 +43,29 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
   const [deadlineDate, setDeadlineDate] = useState('');
   const [deadlineTime, setDeadlineTime] = useState('18:00');
   const [audience, setAudience] = useState<DecisionAudience>('public');
+
+  // Attachments (Files and Photos)
+  const [attachments, setAttachments] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      Array.from(files).forEach((file: File) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (reader.result) {
+            setAttachments(prev => [...prev, reader.result as string]);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const handleRemoveAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
 
   // Initialize deadline date to tomorrow
   useEffect(() => {
@@ -104,8 +129,11 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
         return true; // Any type is selected by default
       case 3:
         if (decisionType === 'yes_no' || decisionType === 'rating') return true;
-        // Single/multiple choice options must be non-empty and unique
-        return options.filter(opt => opt.trim().length > 0).length >= 2;
+        // Single/multiple choice options must be non-empty and unique (case-insensitive, trim)
+        const validOpts = options.map(o => o.trim().toLowerCase()).filter(o => o.length > 0);
+        if (validOpts.length < 2) return false;
+        const uniqueOpts = new Set(validOpts);
+        return uniqueOpts.size === validOpts.length;
       case 4:
         return deadlineDate !== '' && deadlineTime !== '';
       default:
@@ -153,7 +181,8 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
       options: formattedOptions,
       participants: [],
       comments: [],
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      attachments: attachments
     };
 
     onPublish(newDecision);
@@ -165,6 +194,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
     setCategory('Design');
     setDecisionType('single');
     setOptions(['', '']);
+    setAttachments([]);
   };
 
   return (
@@ -261,7 +291,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Categoria</label>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Categoria</label>
                   <div className="flex flex-wrap gap-2">
                     {CATEGORIES.map((cat) => (
                       <button
@@ -278,6 +308,63 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* File / Photo Upload Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                      <Paperclip className="w-3.5 h-3.5 text-blue-600" />
+                      Allegati, File o Foto (Opzionale)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      Carica File/Foto
+                    </button>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.doc,.docx,.txt"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </div>
+
+                  {attachments.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-2.5 pt-1">
+                      {attachments.map((att, idx) => (
+                        <div key={idx} className="relative group rounded-xl border border-gray-200 overflow-hidden bg-gray-50 aspect-video flex items-center justify-center">
+                          {att.startsWith('data:image/') ? (
+                            <img src={att} alt="Attachment" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="p-2 text-center">
+                              <Paperclip className="w-6 h-6 text-blue-600 mx-auto mb-1" />
+                              <span className="text-[10px] font-bold text-gray-600 truncate block">File #{idx + 1}</span>
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAttachment(idx)}
+                            className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition shadow-sm cursor-pointer"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="border-2 border-dashed border-gray-200 hover:border-blue-400 rounded-2xl p-4 text-center cursor-pointer transition bg-gray-50/50"
+                    >
+                      <p className="text-xs text-slate-400 font-medium">Trascina qui i file o clicca per caricare foto e documenti di supporto</p>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}

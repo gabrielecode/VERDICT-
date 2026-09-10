@@ -50,11 +50,23 @@ export interface Decision {
   participants: Participant[];
   comments: Comment[];
   createdAt: string;
+  attachments?: string[]; // base64 images or files
+}
+
+export interface AuditLog {
+  id: string;
+  action: string;
+  timestamp: string;
+  user: string;
 }
 
 export interface TeamMember {
   id: string;
   name: string;
+  surname: string;
+  department: string;
+  email: string;
+  phone: string;
   role: string;
   avatar: string;
   status: string;

@@ -14,9 +14,13 @@ import {
   Calendar,
   X,
   Sparkles,
-  Search
+  Search,
+  BarChart3,
+  ListChecks,
+  Menu
 } from 'lucide-react';
-import { TeamMember, Decision } from '../types';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { TeamMember, Decision, AuditLog } from '../types';
 import { ConfirmDialog } from './ConfirmDialog';
 
 interface AdminPanelProps {
@@ -51,26 +55,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onExtendDeadline,
   onExpireImmediately
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'members' | 'decisions' | 'settings'>('members');
-  
+  const [activeSubTab, setActiveSubTab] = useState<'members' | 'decisions' | 'settings' | 'analytics' | 'audit'>('members');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+
+  const addAuditLog = (action: string) => {
+    const newLog: AuditLog = {
+      id: Date.now().toString(),
+      action,
+      timestamp: new Date().toLocaleString('it-IT'),
+      user: adminName || 'Admin'
+    };
+    setAuditLogs(prev => [newLog, ...prev]);
+  };
+
   // Settings state
   const [adminName, setAdminName] = useState(localStorage.getItem('adminName') || '');
   const [adminEmail, setAdminEmail] = useState(localStorage.getItem('adminEmail') || '');
   const [companyName, setCompanyName] = useState(localStorage.getItem('companyName') || '');
   const [companyIndustry, setCompanyIndustry] = useState(localStorage.getItem('companyIndustry') || '');
 
-  // Persist settings on change (simplified for now)
+  // Persist settings on change
   const saveSettings = () => {
     localStorage.setItem('adminName', adminName);
     localStorage.setItem('adminEmail', adminEmail);
     localStorage.setItem('companyName', companyName);
     localStorage.setItem('companyIndustry', companyIndustry);
+    addAuditLog('Aggiornate impostazioni aziendali');
     alert('Impostazioni salvate!');
   };
 
   // New Member state
   const [newMemberName, setNewMemberName] = useState('');
-  const [newMemberRole, setNewMemberRole] = useState('');
+  const [newMemberSurname, setNewMemberSurname] = useState('');
+  const [newMemberDepartment, setNewMemberDepartment] = useState('Prodotto');
+  const [newMemberEmail, setNewMemberEmail] = useState('');
+  const [newMemberPhone, setNewMemberPhone] = useState('');
+  const [newMemberRole, setNewMemberRole] = useState('Senior Developer');
   const [newMemberStatus, setNewMemberStatus] = useState('Attivo');
   const [selectedAvatarUrl, setSelectedAvatarUrl] = useState(PRESET_AVATARS[0].url);
   const [showCustomAvatarField, setShowCustomAvatarField] = useState<'preset' | 'url' | 'upload'>('preset');
@@ -97,13 +118,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const inviteUrl = `${window.location.origin}/?action=invite-member`;
     navigator.clipboard.writeText(inviteUrl).then(() => {
       setCopiedInvite(true);
+      addAuditLog('Copiato link invito');
       setTimeout(() => setCopiedInvite(false), 2000);
     });
   };
 
   const handleCreateMember = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMemberName.trim() || !newMemberRole.trim()) return;
+    if (!newMemberName.trim() || !newMemberSurname.trim()) return;
 
     const finalAvatar = showCustomAvatarField === 'upload' && uploadedAvatar
       ? uploadedAvatar
@@ -113,14 +135,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
     onAddMember({
       name: newMemberName.trim(),
-      role: newMemberRole.trim(),
+      surname: newMemberSurname.trim(),
+      department: newMemberDepartment.trim(),
+      email: newMemberEmail.trim(),
+      phone: newMemberPhone.trim(),
+      role: newMemberRole,
       avatar: finalAvatar,
       status: newMemberStatus
     });
+    
+    addAuditLog(`Creato membro: ${newMemberName} ${newMemberSurname}`);
 
     // Reset state
     setNewMemberName('');
-    setNewMemberRole('');
+    setNewMemberSurname('');
+    setNewMemberDepartment('Prodotto');
+    setNewMemberEmail('');
+    setNewMemberPhone('');
+    setNewMemberRole('Senior Developer');
     setNewMemberStatus('Attivo');
     setCustomAvatarUrl('');
     setUploadedAvatar(null);
@@ -167,40 +199,71 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
 
         {/* Action Toggle Tab */}
-        <div className="flex bg-gray-100 p-1 rounded-xl self-stretch sm:self-auto">
-          <button
-            onClick={() => { setActiveSubTab('members'); setAdminSearch(''); }}
-            className={`flex-1 sm:flex-none flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
-              activeSubTab === 'members'
-                ? 'bg-white text-gray-950 shadow-xs'
-                : 'text-gray-500 hover:text-gray-900'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5" />
-            Gestione Team ({members.length})
-          </button>
-          <button
-            onClick={() => { setActiveSubTab('decisions'); setAdminSearch(''); }}
-            className={`flex-1 sm:flex-none flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
-              activeSubTab === 'decisions'
-                ? 'bg-white text-gray-950 shadow-xs'
-                : 'text-gray-500 hover:text-gray-900'
-            }`}
-          >
-            <Vote className="w-3.5 h-3.5" />
-            Gestione Sondaggi ({decisions.length})
-          </button>
-          <button
-            onClick={() => { setActiveSubTab('settings'); setAdminSearch(''); }}
-            className={`flex-1 sm:flex-none flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
-              activeSubTab === 'settings'
-                ? 'bg-white text-gray-950 shadow-xs'
-                : 'text-gray-500 hover:text-gray-900'
-            }`}
-          >
-            <Briefcase className="w-3.5 h-3.5" />
-            Impostazioni
-          </button>
+        <div className="relative">
+          {/* Mobile Menu Dropdown */}
+          <div className="md:hidden w-full relative">
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="flex items-center justify-between w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-900 cursor-pointer shadow-sm mb-2"
+            >
+              <span>{activeSubTab.charAt(0).toUpperCase() + activeSubTab.slice(1)}</span>
+              <Menu className={`w-4 h-4 transition-transform ${isMobileMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {isMobileMenuOpen && (
+              <div className="w-full flex flex-col bg-white p-2 rounded-xl gap-1 border border-gray-200 shadow-xl mb-4 z-50">
+                <button onClick={() => { setActiveSubTab('members'); setIsMobileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-100 cursor-pointer">
+                  <Users className="w-4 h-4" /> Gestione Team
+                </button>
+                <button onClick={() => { setActiveSubTab('decisions'); setIsMobileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-100 cursor-pointer">
+                  <Vote className="w-4 h-4" /> Gestione Sondaggi
+                </button>
+                <button onClick={() => { setActiveSubTab('analytics'); setIsMobileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-100 cursor-pointer">
+                  <BarChart3 className="w-4 h-4" /> Analytics
+                </button>
+                <button onClick={() => { setActiveSubTab('audit'); setIsMobileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-100 cursor-pointer">
+                  <ListChecks className="w-4 h-4" /> Audit Log
+                </button>
+                <button onClick={() => { setActiveSubTab('settings'); setIsMobileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-100 cursor-pointer">
+                  <Briefcase className="w-4 h-4" /> Impostazioni
+                </button>
+              </div>
+            )}
+          </div>
+          
+          {/* Desktop Menu */}
+          <div className="hidden md:flex bg-gray-100 p-1 rounded-xl gap-1">
+            <button
+              onClick={() => setActiveSubTab('members')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${activeSubTab === 'members' ? 'bg-white text-gray-950 shadow-xs' : 'text-gray-500 hover:text-gray-900'}`}
+            >
+              <Users className="w-3.5 h-3.5" /> Gestione Team ({members.length})
+            </button>
+            <button
+              onClick={() => setActiveSubTab('decisions')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${activeSubTab === 'decisions' ? 'bg-white text-gray-950 shadow-xs' : 'text-gray-500 hover:text-gray-900'}`}
+            >
+              <Vote className="w-3.5 h-3.5" /> Gestione Sondaggi ({decisions.length})
+            </button>
+            <button
+              onClick={() => setActiveSubTab('analytics')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${activeSubTab === 'analytics' ? 'bg-white text-gray-950 shadow-xs' : 'text-gray-500 hover:text-gray-900'}`}
+            >
+              <BarChart3 className="w-3.5 h-3.5" /> Analytics
+            </button>
+            <button
+              onClick={() => setActiveSubTab('audit')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${activeSubTab === 'audit' ? 'bg-white text-gray-950 shadow-xs' : 'text-gray-500 hover:text-gray-900'}`}
+            >
+              <ListChecks className="w-3.5 h-3.5" /> Audit Log
+            </button>
+            <button
+              onClick={() => setActiveSubTab('settings')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${activeSubTab === 'settings' ? 'bg-white text-gray-950 shadow-xs' : 'text-gray-500 hover:text-gray-900'}`}
+            >
+              <Briefcase className="w-3.5 h-3.5" /> Impostazioni
+            </button>
+          </div>
         </div>
       </div>
 
@@ -218,16 +281,65 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <form onSubmit={handleCreateMember} className="space-y-4">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nome</label>
+                    <input
+                      type="text"
+                      required
+                      value={newMemberName}
+                      onChange={(e) => setNewMemberName(e.target.value)}
+                      placeholder="es. Sofia"
+                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs font-medium text-gray-900 placeholder-slate-400 transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Cognome</label>
+                    <input
+                      type="text"
+                      required
+                      value={newMemberSurname}
+                      onChange={(e) => setNewMemberSurname(e.target.value)}
+                      placeholder="es. Valenti"
+                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs font-medium text-gray-900 placeholder-slate-400 transition"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nome e Cognome</label>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Settore / Reparto</label>
                   <input
                     type="text"
                     required
-                    value={newMemberName}
-                    onChange={(e) => setNewMemberName(e.target.value)}
-                    placeholder="es. Sofia Valenti"
+                    value={newMemberDepartment}
+                    onChange={(e) => setNewMemberDepartment(e.target.value)}
+                    placeholder="es. Prodotto, Ingegneria, Marketing"
                     className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs font-medium text-gray-900 placeholder-slate-400 transition"
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Email Aziendale</label>
+                    <input
+                      type="email"
+                      required
+                      value={newMemberEmail}
+                      onChange={(e) => setNewMemberEmail(e.target.value)}
+                      placeholder="sofia@verdict.it"
+                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs font-medium text-gray-900 placeholder-slate-400 transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Telefono Ufficio</label>
+                    <input
+                      type="text"
+                      value={newMemberPhone}
+                      onChange={(e) => setNewMemberPhone(e.target.value)}
+                      placeholder="+39 02 555..."
+                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs font-medium text-gray-900 placeholder-slate-400 transition"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -237,7 +349,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     required
                     value={newMemberRole}
                     onChange={(e) => setNewMemberRole(e.target.value)}
-                    placeholder="es. Senior Back-End Dev"
+                    placeholder="es. Head of Product"
                     className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs font-medium text-gray-900 placeholder-slate-400 transition"
                   />
                 </div>
@@ -449,48 +561,74 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </>
         )}
 
-        {/* TAB 3: SETTINGS */}
+        {/* TAB: DECISIONS */}
+        {activeSubTab === 'decisions' && (
+          <div className="bg-white border border-gray-200 rounded-3xl p-6.5 space-y-6 lg:col-span-3">
+            <h2 className="text-sm font-bold text-gray-950 font-display">Gestione Sondaggi ({decisions.length})</h2>
+            {filteredDecisions.length === 0 ? <p className="text-xs text-gray-400">Nessun sondaggio.</p> : filteredDecisions.map(decision => (
+              <div key={decision.id} className="p-4 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-between gap-4">
+                <span className="text-xs font-bold text-gray-900">{decision.title}</span>
+                <div className="flex gap-2">
+                   <button onClick={() => { onExtendDeadline(decision.id, 24); addAuditLog(`Prorogato ${decision.title}`); }} className="text-[10px] font-bold text-blue-600 bg-white px-2 py-1 rounded-lg border border-blue-100 cursor-pointer">Proroga +24h</button>
+                   <button onClick={() => { onExpireImmediately(decision.id); addAuditLog(`Chiuso ${decision.title}`); }} className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100 cursor-pointer">Chiudi Ora</button>
+                   <button onClick={() => { openConfirm('Elimina', 'Eliminare?', () => { onDeleteDecision(decision.id); addAuditLog(`Eliminato ${decision.title}`); }); }} className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-1 rounded-lg border border-rose-100 cursor-pointer">Elimina</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* TAB: ANALYTICS */}
+        {activeSubTab === 'analytics' && (
+          <div className="bg-white border border-gray-200 rounded-3xl p-6.5 space-y-6 lg:col-span-3">
+             <h2 className="text-sm font-bold text-gray-950 font-display">Partecipazione Voti</h2>
+             <div className="h-64 w-full">
+               <ResponsiveContainer width="100%" height="100%">
+                 <BarChart data={decisions.map(d => ({ name: d.title.substring(0,10), votes: d.options.reduce((sum, opt) => sum + opt.votes, 0) }))}>
+                   <XAxis dataKey="name" />
+                   <YAxis />
+                   <Tooltip />
+                   <Bar dataKey="votes" fill="#2563eb" />
+                 </BarChart>
+               </ResponsiveContainer>
+             </div>
+          </div>
+        )}
+        
+        {/* TAB: AUDIT LOG */}
+        {activeSubTab === 'audit' && (
+          <div className="bg-white border border-gray-200 rounded-3xl p-6.5 space-y-6 lg:col-span-3">
+            <h2 className="text-sm font-bold text-gray-950 font-display">Cronologia Azioni (Audit Log)</h2>
+            <div className="space-y-2">
+              {auditLogs.length === 0 ? <p className="text-xs text-gray-400">Nessuna attività registrata.</p> : auditLogs.map(log => (
+                <div key={log.id} className="p-3 bg-gray-50 rounded-xl text-xs flex justify-between">
+                  <span className="font-bold text-gray-800">{log.action}</span>
+                  <span className="text-gray-400">{log.user} • {log.timestamp}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB: SETTINGS */}
         {activeSubTab === 'settings' && (
           <div className="bg-white border border-gray-200 rounded-3xl p-6.5 space-y-6 lg:col-span-3">
             <div className="border-b border-gray-100 pb-4">
                 <h2 className="text-sm font-bold text-gray-950 font-display">Impostazioni Amministratore e Azienda</h2>
-                <p className="text-[11px] text-gray-400 mt-0.5">Gestisci i dettagli del profilo amministratore e le informazioni aziendali.</p>
             </div>
-            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                     <h3 className="text-xs font-bold text-gray-900">Profilo Amministratore</h3>
-                    <div>
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nome Amministratore</label>
-                        <input type="text" value={adminName} onChange={(e) => setAdminName(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs text-gray-900" />
-                    </div>
-                    <div>
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Email Amministratore</label>
-                        <input type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs text-gray-900" />
-                    </div>
+                    <input type="text" value={adminName} onChange={(e) => setAdminName(e.target.value)} onBlur={saveSettings} placeholder="Nome" className="w-full px-4 py-2 rounded-xl border border-gray-200 text-xs" />
+                    <input type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} onBlur={saveSettings} placeholder="Email" className="w-full px-4 py-2 rounded-xl border border-gray-200 text-xs" />
                 </div>
-
                 <div className="space-y-4">
                     <h3 className="text-xs font-bold text-gray-900">Dettagli Azienda</h3>
-                    <div>
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nome Società/Gruppo</label>
-                        <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs text-gray-900" />
-                    </div>
-                    <div>
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Settore/Industria</label>
-                        <input type="text" value={companyIndustry} onChange={(e) => setCompanyIndustry(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs text-gray-900" />
-                    </div>
+                    <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} onBlur={saveSettings} placeholder="Nome Società" className="w-full px-4 py-2 rounded-xl border border-gray-200 text-xs" />
+                    <input type="text" value={companyIndustry} onChange={(e) => setCompanyIndustry(e.target.value)} onBlur={saveSettings} placeholder="Settore" className="w-full px-4 py-2 rounded-xl border border-gray-200 text-xs" />
                 </div>
             </div>
-
-            <div className="pt-4 border-t border-gray-100 flex justify-end">
-                <button
-                  onClick={saveSettings}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-6 py-2.5 rounded-xl transition cursor-pointer shadow-sm"
-                >
-                  Salva Modifiche
-                </button>
-            </div>
+            <button onClick={saveSettings} className="w-full bg-blue-600 text-white text-xs font-bold py-2.5 rounded-xl cursor-pointer hover:bg-blue-700 transition">Salva Modifiche</button>
           </div>
         )}
 

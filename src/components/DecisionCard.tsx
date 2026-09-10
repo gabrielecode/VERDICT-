@@ -51,7 +51,7 @@ export const DecisionCard: React.FC<DecisionCardProps> = ({ decision, onClick })
       layoutId={`card-container-${decision.id}`}
       whileHover={{ y: -4, boxShadow: '0 12px 30px -10px rgba(0,0,0,0.06)' }}
       onClick={onClick}
-      className="bg-white border border-gray-200 rounded-2xl p-6 cursor-pointer transition-all duration-300 relative overflow-hidden flex flex-col justify-between h-full hover:border-blue-500"
+      className="bg-white border border-gray-200 rounded-2xl p-6 cursor-pointer transition-all duration-300 relative overflow-hidden flex flex-col justify-between h-full hover:border-blue-500 group"
     >
       {/* Subtle top decoration for category */}
       <div className="absolute top-0 left-0 right-0 h-[3px] bg-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />

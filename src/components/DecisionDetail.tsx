@@ -15,7 +15,8 @@ import {
   Calendar,
   AlertCircle,
   FileText,
-  FileDown
+  FileDown,
+  Mail
 } from 'lucide-react';
 import { Decision, DecisionOption, Comment } from '../types';
 import { getTimeRemaining, getCategoryStyles, formatDate, TimeRemaining } from '../utils';
@@ -105,6 +106,14 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
     });
     
     doc.save(`risultati_${decision.title.replace(/\s+/g, '_')}.pdf`);
+  };
+
+  const handleSendEmailResults = () => {
+    const subject = encodeURIComponent(`Risultati del Verdict: ${decision.title}`);
+    const body = encodeURIComponent(`Salve,\n\nEcco i risultati aggiornati per il sondaggio "${decision.title}":\n\n` +
+      decision.options.map(opt => `- ${opt.text}: ${opt.votes} voti`).join('\n') +
+      `\n\nTotale voti espressi: ${totalVotes}\n\nVisualizzato tramite Verdict.`);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
   };
 
   const handleVoteSubmit = (optionId: string) => {
@@ -204,6 +213,14 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
             <FileDown className="w-4 h-4" />
             PDF
           </button>
+
+          <button
+            onClick={handleSendEmailResults}
+            className="flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2.5 rounded-xl transition cursor-pointer"
+          >
+            <Mail className="w-4 h-4" />
+            Invia Email
+          </button>
         </div>
       </div>
 
@@ -248,6 +265,30 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
             <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap font-normal">
               {decision.description}
             </div>
+
+            {/* Attachments Gallery if any */}
+            {decision.attachments && decision.attachments.length > 0 && (
+              <div className="pt-4 border-t border-gray-100 space-y-2">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-blue-600" />
+                  Allegati e Foto di Supporto ({decision.attachments.length})
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {decision.attachments.map((att, idx) => (
+                    <div key={idx} className="rounded-xl border border-gray-200 overflow-hidden bg-gray-50 aspect-video flex items-center justify-center relative">
+                      {att.startsWith('data:image/') ? (
+                        <img src={att} alt={`Allegato ${idx + 1}`} className="w-full h-full object-cover hover:scale-105 transition cursor-pointer" onClick={() => window.open(att)} />
+                      ) : (
+                        <div className="p-3 text-center">
+                          <FileText className="w-8 h-8 text-blue-600 mx-auto mb-1" />
+                          <a href={att} download={`allegato_${idx + 1}`} className="text-[10px] font-bold text-blue-600 underline truncate block">Scarica File #{idx + 1}</a>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Voting Area Options Card */}
@@ -389,7 +430,7 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
                               initial={{ width: 0 }}
                               animate={{ width: `${percentage}%` }}
                               transition={{ duration: 0.8, ease: 'easeOut' }}
-                              className={`absolute top-0 bottom-0 left-0 bg-opacity-[0.04] -z-1 pointer-events-none ${
+                              className={`absolute top-0 bottom-0 left-0 opacity-[0.04] -z-10 pointer-events-none ${
                                 userVotedForThis ? 'bg-blue-600' : 'bg-gray-500'
                               }`}
                             />
