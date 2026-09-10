@@ -508,19 +508,29 @@ export default function App() {
       <main className="flex-1 flex flex-col min-w-0">
         
         {/* Top Header Workspace info */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 md:relative z-20">
+        <header className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between sticky top-0 md:relative z-20">
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Spazio Lavoro</span>
-            <span className="text-gray-300 text-xs">/</span>
-            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">Team Alpha</span>
+            <span className="text-gray-300 dark:text-gray-700 text-xs">/</span>
+            <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-900">Team Alpha</span>
           </div>
 
           <div className="flex items-center gap-3">
             {/* Direct User feedback indicator */}
-            <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-bold text-gray-500 uppercase tracking-widest bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-full">
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 px-3 py-1.5 rounded-full">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
               Sincronizzato locale
             </span>
+
+            {/* Logout button in header */}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-xl text-xs font-semibold transition border border-red-200 dark:border-red-900 cursor-pointer"
+              title="Esci dalla sessione"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Esci</span>
+            </button>
           </div>
         </header>
 
