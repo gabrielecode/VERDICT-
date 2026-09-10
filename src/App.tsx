@@ -19,7 +19,8 @@ import {
   ShieldCheck,
   Menu,
   Sun,
-  Moon
+  Moon,
+  LogOut
 } from 'lucide-react';
 import { Decision, Comment, TeamMember, Toast, ToastType } from './types';
 import { MOCK_DECISIONS } from './mockData';
@@ -28,6 +29,7 @@ import { CreationModal } from './components/CreationModal';
 import { DecisionDetail } from './components/DecisionDetail';
 import { AdminPanel } from './components/AdminPanel';
 import { ToastContainer } from './components/ToastContainer';
+import { HomePage } from './components/HomePage';
 import { getTimeRemaining } from './utils';
 
 // Initial dynamic team members list for local storage
@@ -78,6 +80,24 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('verdict_members_v1', JSON.stringify(members));
   }, [members]);
+
+  // Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('verdict_auth_v1') === 'true';
+  });
+
+  const handleLoginSuccess = (username: string) => {
+    setIsAuthenticated(true);
+    localStorage.setItem('verdict_auth_v1', 'true');
+    localStorage.setItem('adminName', username);
+    addToast(`Benvenuto in Verdict, ${username}!`, 'success');
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem('verdict_auth_v1');
+    addToast('Disconnesso con successo.', 'info');
+  };
 
   // Routing / View States
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
@@ -328,6 +348,15 @@ export default function App() {
     }
   };
 
+    if (!isAuthenticated) {
+      return (
+        <div className={`min-h-screen ${isDark ? 'dark' : ''}`}>
+          <ToastContainer toasts={toasts} removeToast={removeToast} />
+          <HomePage onLoginSuccess={handleLoginSuccess} isDark={isDark} toggleDarkMode={() => setIsDark(!isDark)} />
+        </div>
+      );
+    }
+
     return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-950 text-white dark' : 'bg-gray-50 text-gray-900'} flex flex-col md:flex-row font-sans selection:bg-blue-100 selection:text-blue-900`}>
       <ToastContainer toasts={toasts} removeToast={removeToast} />
@@ -459,9 +488,17 @@ export default function App() {
             <button
               onClick={handleResetDatabase}
               title="Ripristina dati iniziali"
-              className="hidden md:block p-1.5 text-gray-400 hover:text-blue-600 hover:bg-white rounded-lg border border-transparent hover:border-gray-150 transition cursor-pointer"
+              className="hidden md:block p-1.5 text-gray-400 hover:text-blue-600 hover:bg-white dark:hover:bg-gray-800 rounded-lg border border-transparent hover:border-gray-150 transition cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+            {/* Logout button */}
+            <button
+              onClick={handleLogout}
+              title="Esci dalla sessione"
+              className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-gray-800 rounded-lg border border-transparent transition cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
