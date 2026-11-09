@@ -1,3 +1,7 @@
+export const CATEGORIES = ['Design','Cultura','Team','Strategia','Logistica','Altro'];
+
+export const getCurrentUserName = () => localStorage.getItem('adminName')?.trim() || 'Tu';
+
 export interface TimeRemaining {
   text: string;
   status: 'active' | 'warning' | 'expired';

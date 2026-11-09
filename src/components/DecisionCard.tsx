@@ -72,7 +72,7 @@ export const DecisionCard: React.FC<DecisionCardProps> = ({ decision, onClick })
               <Shield className="w-3.5 h-3.5 text-slate-400" title="Riservato" />
             )}
             
-            <span className={`text-[11px] font-bold tracking-wide uppercase px-2 py-0.5 rounded-full border ${badgeColor}`}>
+            <span className={`text-xs font-bold tracking-wide uppercase px-2 py-0.5 rounded-full border ${badgeColor}`}>
               {statusText}
             </span>
           </div>
@@ -146,7 +146,7 @@ export const DecisionCard: React.FC<DecisionCardProps> = ({ decision, onClick })
                     />
                   ))}
                   {decision.participants.length > 3 && (
-                    <div className="flex items-center justify-center h-6.5 w-6.5 rounded-full bg-slate-100 ring-2 ring-white text-[10px] font-bold text-slate-500">
+                    <div className="flex items-center justify-center h-6.5 w-6.5 rounded-full bg-slate-100 ring-2 ring-white text-xs font-bold text-slate-500">
                       +{decision.participants.length - 3}
                     </div>
                   )}

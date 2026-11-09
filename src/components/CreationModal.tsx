@@ -20,6 +20,7 @@ import {
   Upload
 } from 'lucide-react';
 import { Decision, DecisionType, DecisionAudience, DecisionOption } from '../types';
+import { CATEGORIES, getCurrentUserName } from '../utils';
 
 interface CreationModalProps {
   isOpen: boolean;
@@ -27,7 +28,6 @@ interface CreationModalProps {
   onPublish: (newDecision: Decision) => void;
 }
 
-const CATEGORIES = ['Design', 'Cultura', 'Team', 'Strategia', 'Logistica', 'Altro'];
 
 export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, onPublish }) => {
   const [step, setStep] = useState(1);
@@ -52,10 +52,17 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
     const files = e.target.files;
     if (files) {
       Array.from(files).forEach((file: File) => {
+        if (file.size > 1048576 || attachments.length >= 3) {
+          alert('File troppo grande o limite allegati raggiunto');
+          return;
+        }
         const reader = new FileReader();
         reader.onloadend = () => {
           if (reader.result) {
-            setAttachments(prev => [...prev, reader.result as string]);
+            setAttachments(prev => {
+              if (prev.length >= 3) return prev;
+              return [...prev, reader.result as string];
+            });
           }
         };
         reader.readAsDataURL(file);
@@ -91,6 +98,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
   if (!isOpen) return null;
 
   const handleAddOption = () => {
+    if (options.length >= 10) return;
     setOptions([...options, '']);
   };
 
@@ -135,7 +143,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
         const uniqueOpts = new Set(validOpts);
         return uniqueOpts.size === validOpts.length;
       case 4:
-        return deadlineDate !== '' && deadlineTime !== '';
+        return deadlineDate !== '' && deadlineTime !== '' && !isNaN(new Date(`${deadlineDate}T${deadlineTime}`).getTime()) && new Date(`${deadlineDate}T${deadlineTime}`).getTime() > Date.now();
       default:
         return true;
     }
@@ -174,7 +182,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
       deadline: finalDeadline,
       audience: audience,
       creator: {
-        name: 'Tu',
+        name: getCurrentUserName(),
         role: 'Autore',
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces&q=80'
       },
@@ -198,7 +206,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto flex items-end sm:items-center justify-center p-0 sm:p-4">
       {/* Overlay Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -214,10 +222,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.97, y: 10 }}
         transition={{ type: 'spring', duration: 0.4 }}
-        className="bg-white w-full max-w-2xl rounded-3xl shadow-xl relative overflow-hidden flex flex-col z-10 border border-gray-200 max-h-[90vh]"
+        className="bg-white w-full max-w-2xl rounded-none sm:rounded-3xl shadow-xl relative overflow-hidden flex flex-col z-10 border border-gray-200 max-h-[100dvh] sm:max-h-[90dvh]"
       >
         {/* Header */}
-        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50 shrink-0">
           <div>
             <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">Crea un nuovo Verdict</span>
             <h2 className="text-xl font-bold text-gray-950 font-display">Procedura Guidata</h2>
@@ -230,29 +238,30 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
           </button>
         </div>
 
-        {/* Progress Tracker Bar */}
-        <div className="bg-gray-100 h-1.5 w-full flex">
-          {[1, 2, 3, 4, 5].map((s) => (
-            <div
-              key={s}
-              className={`h-full transition-all duration-300 flex-1 ${
-                s <= step ? 'bg-blue-600' : 'bg-transparent'
-              }`}
+        {/* Step Indicator and Progress Bar */}
+        <div className="bg-gray-50/50 border-b border-gray-150 shrink-0">
+          <div className="px-6 py-3">
+            <span className="text-xs font-bold text-blue-600">
+              Passo {step} di 5 · {
+                step === 1 ? 'Titolo e Descrizione' :
+                step === 2 ? 'Tipo Decisione' :
+                step === 3 ? 'Opzioni / Scelte' :
+                step === 4 ? 'Scadenza e Pubblico' :
+                'Anteprima e Conferma'
+              }
+            </span>
+          </div>
+          <div className="bg-gray-100 h-1.5 w-full">
+            <motion.div
+              initial={false}
+              animate={{ width: `${(step / 5) * 100}%` }}
+              className="h-full bg-blue-600"
             />
-          ))}
-        </div>
-
-        {/* Step Indicator Badges */}
-        <div className="px-6 py-3 border-b border-gray-150 flex justify-between text-[11px] font-bold text-slate-400 bg-gray-50/50">
-          <span className={step === 1 ? 'text-blue-600' : ''}>1. Titolo e Descrizione</span>
-          <span className={step === 2 ? 'text-blue-600' : ''}>2. Tipo Decisione</span>
-          <span className={step === 3 ? 'text-blue-600' : ''}>3. Opzioni / Scelte</span>
-          <span className={step === 4 ? 'text-blue-600' : ''}>4. Scadenza e Pubblico</span>
-          <span className={step === 5 ? 'text-blue-600' : ''}>5. Anteprima e Conferma</span>
+          </div>
         </div>
 
         {/* Modal Scrollable Body */}
-        <div className="p-8 overflow-y-auto flex-1">
+        <div className="p-8 flex-1 min-h-0 overflow-y-auto">
           <AnimatePresence mode="wait">
             {step === 1 && (
               <motion.div
@@ -267,9 +276,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                   <input
                     type="text"
                     value={title}
+                    maxLength={80}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="es. Quale logo preferisci per la startup?"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-slate-400 font-medium transition"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-slate-400 font-medium transition text-base md:text-xs"
                   />
                   {title.length > 0 && title.length < 4 && (
                     <p className="text-red-500 text-xs mt-1 font-mono">Il titolo deve contenere almeno 4 caratteri.</p>
@@ -281,9 +291,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                   <textarea
                     rows={4}
                     value={description}
+                    maxLength={500}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Fornisci dettagli sul contesto, file di riferimento, o criteri che il team dovrebbe considerare..."
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-slate-400 font-normal transition resize-none"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-slate-400 font-normal transition resize-none text-base md:text-xs"
                   />
                   {description.length > 0 && description.length < 10 && (
                     <p className="text-red-500 text-xs mt-1 font-mono">Descrivi meglio il contesto (almeno 10 caratteri).</p>
@@ -344,7 +355,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                           ) : (
                             <div className="p-2 text-center">
                               <Paperclip className="w-6 h-6 text-blue-600 mx-auto mb-1" />
-                              <span className="text-[10px] font-bold text-gray-600 truncate block">File #{idx + 1}</span>
+                              <span className="text-xs font-bold text-gray-600 truncate block">File #{idx + 1}</span>
                             </div>
                           )}
                           <button
@@ -490,15 +501,17 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                       <input
                         type="text"
                         value={options[0]}
+                        maxLength={80}
                         onChange={(e) => handleOptionChange(0, e.target.value)}
-                        className="w-full bg-white px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full bg-white px-4 py-2.5 border border-gray-200 rounded-xl text-base md:text-xs font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Opzione positiva"
                       />
                       <input
                         type="text"
                         value={options[1]}
+                        maxLength={80}
                         onChange={(e) => handleOptionChange(1, e.target.value)}
-                        className="w-full bg-white px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full bg-white px-4 py-2.5 border border-gray-200 rounded-xl text-base md:text-xs font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Opzione negativa"
                       />
                     </div>
@@ -529,9 +542,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                         <input
                           type="text"
                           value={option}
+                          maxLength={80}
                           onChange={(e) => handleOptionChange(idx, e.target.value)}
                           placeholder={`es. Opzione alternativa ${idx + 1}`}
-                          className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                          className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-base md:text-xs text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                         />
                         {options.length > 2 && (
                           <button
@@ -545,14 +559,16 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                       </div>
                     ))}
 
-                    <button
-                      type="button"
-                      onClick={handleAddOption}
-                      className="mt-2 flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100/70 px-4 py-2 rounded-xl transition cursor-pointer"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Aggiungi un'opzione
-                    </button>
+                    {options.length < 10 && (
+                      <button
+                        type="button"
+                        onClick={handleAddOption}
+                        className="mt-2 flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100/70 px-4 py-2 rounded-xl transition cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Aggiungi un'opzione
+                      </button>
+                    )}
                   </div>
                 )}
               </motion.div>
@@ -577,13 +593,14 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                       type="date"
                       value={deadlineDate}
                       onChange={(e) => setDeadlineDate(e.target.value)}
-                      className="px-4 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      min={new Date().toISOString().slice(0, 10)}
+                      className="px-4 py-3 border border-gray-200 rounded-xl text-base md:text-xs font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     />
                     <input
                       type="time"
                       value={deadlineTime}
                       onChange={(e) => setDeadlineTime(e.target.value)}
-                      className="px-4 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      className="px-4 py-3 border border-gray-200 rounded-xl text-base md:text-xs font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     />
                   </div>
 
@@ -642,7 +659,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                         </div>
                         <div>
                           <h4 className="font-bold text-gray-900 text-xs">Pubblico</h4>
-                          <p className="text-[11px] text-slate-400 mt-0.5">Chiunque abbia il link condivisibile può visualizzare e votare.</p>
+                          <p className="text-xs text-slate-400 mt-0.5">Chiunque abbia il link condivisibile può visualizzare e votare.</p>
                         </div>
                       </div>
                       {audience === 'public' && <CheckCircle2 className="w-4 h-4 text-blue-600" />}
@@ -663,7 +680,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                         </div>
                         <div>
                           <h4 className="font-bold text-gray-900 text-xs">Membri del Team (Riservato)</h4>
-                          <p className="text-[11px] text-slate-400 mt-0.5">Limitato ai soli utenti loggati appartenenti alla tua organizzazione.</p>
+                          <p className="text-xs text-slate-400 mt-0.5">Limitato ai soli utenti loggati appartenenti alla tua organizzazione.</p>
                         </div>
                       </div>
                       {audience === 'restricted' && <CheckCircle2 className="w-4 h-4 text-blue-600" />}
@@ -684,7 +701,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                         </div>
                         <div>
                           <h4 className="font-bold text-gray-900 text-xs">Privato</h4>
-                          <p className="text-[11px] text-slate-400 mt-0.5">Solo i membri specificati che ricevono un invito email diretto.</p>
+                          <p className="text-xs text-slate-400 mt-0.5">Solo i membri specificati che ricevono un invito email diretto.</p>
                         </div>
                       </div>
                       {audience === 'private' && <CheckCircle2 className="w-4 h-4 text-blue-600" />}
@@ -715,10 +732,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                 {/* Simulated preview box */}
                 <div className="bg-gray-50 rounded-2xl p-5 border border-gray-200 space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-blue-600 px-2.5 py-0.5 bg-blue-50 rounded-md border border-blue-100">
+                    <span className="text-xs font-bold text-blue-600 px-2.5 py-0.5 bg-blue-50 rounded-md border border-blue-100">
                       {category}
                     </span>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
                       {audience === 'public' ? <Globe className="w-3 h-3 text-emerald-500" /> : <Lock className="w-3 h-3 text-amber-500" />}
                       {audience === 'public' ? 'Pubblico' : audience === 'restricted' ? 'Riservato' : 'Privato'}
                     </span>
@@ -731,22 +748,22 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
 
                   {/* Options visualization */}
                   <div className="space-y-1.5 pt-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Opzioni configurate:</span>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Opzioni configurate:</span>
                     {decisionType === 'rating' ? (
                       <div className="flex gap-1 text-amber-400 py-1">
                         {[1, 2, 3, 4, 5].map(s => <Star key={s} className="w-4 h-4 fill-amber-400" />)}
-                        <span className="text-[11px] text-slate-500 font-medium ml-1">Scala di valutazione</span>
+                        <span className="text-xs text-slate-500 font-medium ml-1">Scala di valutazione</span>
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 gap-1.5">
                         {options.filter(o => o.trim().length > 0).slice(0, 3).map((opt, i) => (
                           <div key={i} className="flex items-center gap-2 text-xs text-slate-600 bg-white border border-gray-100 px-3 py-1.5 rounded-lg font-medium">
-                            <span className="text-blue-600 text-[10px] font-extrabold">{i+1}.</span>
+                            <span className="text-blue-600 text-xs font-extrabold">{i+1}.</span>
                             <span className="truncate">{opt}</span>
                           </div>
                         ))}
                         {options.filter(o => o.trim().length > 0).length > 3 && (
-                          <span className="text-[10px] text-slate-400 font-semibold italic pl-1">
+                          <span className="text-xs text-slate-400 font-semibold italic pl-1">
                             + altre {options.filter(o => o.trim().length > 0).length - 3} opzioni
                           </span>
                         )}
@@ -754,9 +771,9 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                     )}
                   </div>
 
-                  <div className="border-t border-gray-150 pt-3 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                  <div className="border-t border-gray-150 pt-3 flex items-center justify-between text-xs text-slate-500 font-medium">
                     <span>Scadenza: {deadlineDate ? `${deadlineDate} alle ${deadlineTime}` : 'Non definita'}</span>
-                    <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md font-bold uppercase text-[9px]">Stato: Attivo</span>
+                    <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md font-bold uppercase text-xs">Stato: Attivo</span>
                   </div>
                 </div>
               </motion.div>
@@ -765,7 +782,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
         </div>
 
         {/* Footer Actions */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between shrink-0">
           <button
             type="button"
             onClick={handlePrev}

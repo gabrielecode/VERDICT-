@@ -30,7 +30,7 @@ import { DecisionDetail } from './components/DecisionDetail';
 import { AdminPanel } from './components/AdminPanel';
 import { ToastContainer } from './components/ToastContainer';
 import { HomePage } from './components/HomePage';
-import { getTimeRemaining } from './utils';
+import { getTimeRemaining, CATEGORIES, getCurrentUserName } from './utils';
 
 // Initial dynamic team members list for local storage
 const INITIAL_TEAM_MEMBERS: TeamMember[] = [
@@ -63,7 +63,11 @@ export default function App() {
 
   // Sync to local storage
   useEffect(() => {
-    localStorage.setItem('verdict_decisions_v1', JSON.stringify(decisions));
+    try {
+      localStorage.setItem('verdict_decisions_v1', JSON.stringify(decisions));
+    } catch (e) {
+      addToast('Memoria del browser piena: riduci gli allegati.', 'error');
+    }
   }, [decisions]);
 
   // Dynamic Team Members state
@@ -78,7 +82,11 @@ export default function App() {
 
   // Sync members to local storage
   useEffect(() => {
-    localStorage.setItem('verdict_members_v1', JSON.stringify(members));
+    try {
+      localStorage.setItem('verdict_members_v1', JSON.stringify(members));
+    } catch (e) {
+      addToast('Memoria del browser piena: riduci gli allegati.', 'error');
+    }
   }, [members]);
 
   // Authentication State
@@ -101,6 +109,20 @@ export default function App() {
 
   // Routing / View States
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
+
+  const openDecision = (id: string) => {
+    window.history.pushState({ decisionId: id }, '');
+    setSelectedDecisionId(id);
+  };
+
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      setSelectedDecisionId(e.state?.decisionId ?? null);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [showTeamModal, setShowTeamModal] = useState(false);
 
@@ -178,7 +200,7 @@ export default function App() {
   const handlePublishDecision = (newDecision: Decision) => {
     setDecisions(prev => [newDecision, ...prev]);
     // Focus on the newly created decision immediately!
-    setSelectedDecisionId(newDecision.id);
+    openDecision(newDecision.id);
     setActiveMenuTab('dashboard');
     addToast('Nuova decisione pubblicata con successo!', 'success');
   };
@@ -214,11 +236,11 @@ export default function App() {
     setDecisions(prev =>
       prev.map(d => {
         if (d.id !== id) return d;
-        const currentDeadline = new Date(d.deadline);
-        const newDeadline = new Date(currentDeadline.getTime() + 1000 * 60 * 60 * hours);
-        return { ...d, deadline: newDeadline.toISOString() };
+        const newDeadlineDate = new Date(Math.max(Date.now(), new Date(d.deadline).getTime()) + hours * 3600000);
+        return { ...d, deadline: newDeadlineDate.toISOString() };
       })
     );
+    notifiedExpired.current.delete(id);
   };
 
   const handleExpireDecisionImmediately = (id: string) => {
@@ -254,13 +276,13 @@ export default function App() {
         });
 
         // Add current user to participants list if not already present
-        const hasJoined = d.participants.some(p => p.name === 'Tu');
+        const hasJoined = d.participants.some(p => p.name === getCurrentUserName());
         const updatedParticipants = hasJoined
           ? d.participants
           : [
               ...d.participants,
               {
-                name: 'Tu',
+                name: getCurrentUserName(),
                 avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces&q=80'
               }
             ];
@@ -280,7 +302,7 @@ export default function App() {
   const handleAddComment = (decisionId: string, text: string) => {
     const newCommentObj: Comment = {
       id: `comment-user-${Date.now()}`,
-      author: 'Tu (Visitatore)',
+      author: getCurrentUserName(),
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces&q=80',
       role: 'Decision Maker',
       text: text,
@@ -358,11 +380,11 @@ export default function App() {
     }
 
     return (
-    <div className={`min-h-screen ${isDark ? 'bg-gray-950 text-white dark' : 'bg-gray-50 text-gray-900'} flex flex-col md:flex-row font-sans selection:bg-blue-100 selection:text-blue-900`}>
+    <div className={`min-h-dvh ${isDark ? 'bg-gray-950 text-white dark' : 'bg-gray-50 text-gray-900'} flex flex-col md:flex-row font-sans selection:bg-blue-100 selection:text-blue-900 pb-24 md:pb-0`}>
       <ToastContainer toasts={toasts} removeToast={removeToast} />
       
       {/* LEFT SIDEBAR - Responsive desktop view */}
-      <aside className="w-full md:w-68 shrink-0 bg-white dark:bg-gray-950 border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-800 flex flex-col justify-between md:sticky md:top-0 md:h-screen z-30">
+      <aside className="hidden md:flex w-full md:w-68 shrink-0 bg-white dark:bg-gray-950 border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-800 flex-col justify-between md:sticky md:top-0 md:h-screen z-30">
         <div>
           {/* Brand Logo & Header */}
           <div className="px-6 py-5.5 flex items-center justify-between border-b border-gray-100">
@@ -376,7 +398,7 @@ export default function App() {
                 </div>
                 <div>
                   <span className="font-display font-bold text-lg text-gray-950 dark:text-white tracking-tight block">Verdict</span>
-                  <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mt-[-2px] block">Collettivo</span>
+                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mt-[-2px] block">Collettivo</span>
                 </div>
               </div>
             </div>
@@ -481,8 +503,8 @@ export default function App() {
               className="w-8 h-8 rounded-full object-cover border border-gray-200"
             />
             <div className="min-w-0 flex-1">
-              <span className="text-[11px] font-bold text-gray-800 block truncate leading-tight">{localStorage.getItem('adminName') || 'Tu (Visitatore)'}</span>
-              <span className="text-[9px] text-gray-400 block truncate font-medium">Decision Maker</span>
+              <span className="text-xs font-bold text-gray-800 block truncate leading-tight">{localStorage.getItem('adminName') || 'Tu (Visitatore)'}</span>
+              <span className="text-xs text-gray-400 block truncate font-medium">Decision Maker</span>
             </div>
             {/* Database Reset on desktop */}
             <button
@@ -510,14 +532,32 @@ export default function App() {
         {/* Top Header Workspace info */}
         <header className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between sticky top-0 md:relative z-20">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Spazio Lavoro</span>
-            <span className="text-gray-300 dark:text-gray-700 text-xs">/</span>
-            <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-900">Team Alpha</span>
+            {/* Mobile Logo Branding */}
+            <div className="flex md:hidden items-center gap-2 mr-2">
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-sm">
+                <Vote className="w-4.5 h-4.5 stroke-[2.5]" />
+              </div>
+              <span className="font-display font-bold text-base text-gray-950 dark:text-white tracking-tight">Verdict</span>
+            </div>
+
+            <div className="hidden md:flex items-center gap-2">
+              <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Spazio Lavoro</span>
+              <span className="text-gray-300 dark:text-gray-700 text-xs">/</span>
+              <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-900">Team Alpha</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Mobile Theme Toggle */}
+            <button
+              onClick={() => setIsDark(!isDark)}
+              className="md:hidden p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900 rounded-xl transition"
+            >
+              {isDark ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5" />}
+            </button>
+
             {/* Direct User feedback indicator */}
-            <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 px-3 py-1.5 rounded-full">
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 px-3 py-1.5 rounded-full">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
               Sincronizzato locale
             </span>
@@ -590,7 +630,7 @@ export default function App() {
                   </div>
 
                   <div className="max-w-2xl space-y-4">
-                    <div className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-600 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full border border-blue-100">
+                    <div className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-600 text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full border border-blue-100">
                       <Sparkles className="w-3.5 h-3.5" />
                       Decidi Insieme, Meglio
                     </div>
@@ -606,15 +646,15 @@ export default function App() {
                   <div className="grid grid-cols-3 gap-6 pt-6 border-t border-gray-150 mt-8 max-w-sm">
                     <div>
                       <span className="text-xl font-black text-gray-900 block leading-tight">{statsSummary.total}</span>
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Proposte totali</span>
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Proposte totali</span>
                     </div>
                     <div>
                       <span className="text-xl font-black text-blue-600 block leading-tight">{statsSummary.activeCount}</span>
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Attive ora</span>
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Attive ora</span>
                     </div>
                     <div>
                       <span className="text-xl font-black text-emerald-600 block leading-tight">{statsSummary.totalVotes}</span>
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Voti espressi</span>
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Voti espressi</span>
                     </div>
                   </div>
                 </div>
@@ -630,13 +670,13 @@ export default function App() {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Cerca decisioni per titolo..."
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 pl-9 pr-4 text-xs font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent transition"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 pl-9 pr-4 text-base md:text-xs font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent transition"
                     />
                   </div>
 
                   {/* Category Filter Pills */}
                   <div className="flex flex-wrap gap-1.5 w-full lg:w-auto justify-start lg:justify-center">
-                    {['Tutte', 'Design', 'Cultura', 'Team', 'Strategia', 'Logistica'].map((cat) => (
+                    {['Tutte', ...CATEGORIES].map((cat) => (
                       <button
                         key={cat}
                         onClick={() => setActiveCategory(cat)}
@@ -669,7 +709,7 @@ export default function App() {
                   )}
 
                   {activeMenuTab === 'archived' && (
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl">
                       Filtro Archivio Attivo
                     </span>
                   )}
@@ -721,7 +761,7 @@ export default function App() {
                         <DecisionCard
                           key={decision.id}
                           decision={decision}
-                          onClick={() => setSelectedDecisionId(decision.id)}
+                          onClick={() => openDecision(decision.id)}
                         />
                       ))}
                     </div>
@@ -809,11 +849,11 @@ export default function App() {
                         />
                         <div>
                           <p className="text-xs font-bold text-gray-800 leading-tight">{member.name}</p>
-                          <p className="text-[10px] text-gray-400 font-medium mt-0.5">{member.role}</p>
+                          <p className="text-xs text-gray-400 font-medium mt-0.5">{member.role}</p>
                         </div>
                       </div>
 
-                      <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                      <span className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                         member.status === 'Attiva' || member.status === 'Attivo' || member.status === 'Disponibile'
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                           : member.status === 'In riunione'
@@ -841,6 +881,51 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* BOTTOM MOBILE NAVIGATION BAR */}
+      <nav aria-label="Navigazione" className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 grid grid-cols-5 pb-[env(safe-area-inset-bottom)]">
+        <button
+          onClick={() => { setSelectedDecisionId(null); setActiveMenuTab('dashboard'); }}
+          aria-label="Dashboard"
+          className={`flex flex-col items-center justify-center min-h-14 gap-1 ${activeMenuTab === 'dashboard' && !selectedDecisionId ? 'text-blue-600' : 'text-gray-400'}`}
+        >
+          <LayoutDashboard className="w-5 h-5" />
+          <span className="text-xs font-bold">Dashboard</span>
+        </button>
+        <button
+          onClick={() => { setSelectedDecisionId(null); setActiveMenuTab('archived'); }}
+          aria-label="Archivio"
+          className={`flex flex-col items-center justify-center min-h-14 gap-1 ${activeMenuTab === 'archived' && !selectedDecisionId ? 'text-blue-600' : 'text-gray-400'}`}
+        >
+          <Archive className="w-5 h-5" />
+          <span className="text-xs font-bold">Archivio</span>
+        </button>
+        <div className="flex items-center justify-center -mt-6">
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            aria-label="Nuovo Verdict"
+            className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg shadow-blue-200 dark:shadow-none border-4 border-white dark:border-gray-950"
+          >
+            <Plus className="w-6 h-6 stroke-[3]" />
+          </button>
+        </div>
+        <button
+          onClick={() => { setSelectedDecisionId(null); setActiveMenuTab('admin'); }}
+          aria-label="Admin"
+          className={`flex flex-col items-center justify-center min-h-14 gap-1 ${activeMenuTab === 'admin' && !selectedDecisionId ? 'text-blue-600' : 'text-gray-400'}`}
+        >
+          <ShieldCheck className="w-5 h-5" />
+          <span className="text-xs font-bold">Admin</span>
+        </button>
+        <button
+          onClick={() => setShowTeamModal(true)}
+          aria-label="Team"
+          className="flex flex-col items-center justify-center min-h-14 gap-1 text-gray-400"
+        >
+          <Users className="w-5 h-5" />
+          <span className="text-xs font-bold">Team</span>
+        </button>
+      </nav>
     </div>
   );
 }

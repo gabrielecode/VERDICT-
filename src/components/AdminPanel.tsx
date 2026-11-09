@@ -190,7 +190,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div>
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">Amministrazione</span>
-              <span className="bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border border-emerald-100">
+              <span className="bg-emerald-50 text-emerald-700 text-xs font-black uppercase tracking-wider px-2 py-0.5 rounded-md border border-emerald-100">
                 Pannello Controllo
               </span>
             </div>
@@ -283,22 +283,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <form onSubmit={handleCreateMember} className="space-y-4">
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nome</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nome</label>
                     <input
                       type="text"
                       required
                       value={newMemberName}
+                      maxLength={40}
                       onChange={(e) => setNewMemberName(e.target.value)}
                       placeholder="es. Sofia"
-                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs font-medium text-gray-900 placeholder-slate-400 transition"
+                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base md:text-xs font-medium text-gray-900 placeholder-slate-400 transition"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Cognome</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Cognome</label>
                     <input
                       type="text"
                       required
                       value={newMemberSurname}
+                      maxLength={40}
                       onChange={(e) => setNewMemberSurname(e.target.value)}
                       placeholder="es. Valenti"
                       className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs font-medium text-gray-900 placeholder-slate-400 transition"
@@ -307,59 +309,62 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Settore / Reparto</label>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Settore / Reparto</label>
                   <input
                     type="text"
                     required
                     value={newMemberDepartment}
                     onChange={(e) => setNewMemberDepartment(e.target.value)}
                     placeholder="es. Prodotto, Ingegneria, Marketing"
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs font-medium text-gray-900 placeholder-slate-400 transition"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base md:text-xs font-medium text-gray-900 placeholder-slate-400 transition"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Email Aziendale</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Email Aziendale</label>
                     <input
                       type="email"
                       required
                       value={newMemberEmail}
+                      maxLength={100}
                       onChange={(e) => setNewMemberEmail(e.target.value)}
                       placeholder="sofia@verdict.it"
-                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs font-medium text-gray-900 placeholder-slate-400 transition"
+                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base md:text-xs font-medium text-gray-900 placeholder-slate-400 transition"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Telefono Ufficio</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Telefono Ufficio</label>
                     <input
-                      type="text"
+                      type="tel"
                       value={newMemberPhone}
+                      maxLength={30}
                       onChange={(e) => setNewMemberPhone(e.target.value)}
                       placeholder="+39 02 555..."
-                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs font-medium text-gray-900 placeholder-slate-400 transition"
+                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base md:text-xs font-medium text-gray-900 placeholder-slate-400 transition"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Ruolo Professionale</label>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Ruolo Professionale</label>
                   <input
                     type="text"
                     required
                     value={newMemberRole}
+                    maxLength={60}
                     onChange={(e) => setNewMemberRole(e.target.value)}
                     placeholder="es. Head of Product"
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs font-medium text-gray-900 placeholder-slate-400 transition"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base md:text-xs font-medium text-gray-900 placeholder-slate-400 transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Stato Iniziale</label>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Stato Iniziale</label>
                   <select
                     value={newMemberStatus}
                     onChange={(e) => setNewMemberStatus(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs font-bold text-gray-700 bg-white transition cursor-pointer"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base md:text-xs font-bold text-gray-700 bg-white transition cursor-pointer"
                   >
                     <option value="Attivo">Attivo</option>
                     <option value="Attiva">Attiva</option>
@@ -373,19 +378,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 {/* Avatar Picker Preset */}
                 <div>
                   <div className="flex justify-between items-center mb-1.5">
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Foto Profilo (Avatar)</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Foto Profilo (Avatar)</label>
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => setShowCustomAvatarField(showCustomAvatarField === 'url' ? 'preset' : 'url')}
-                        className={`text-[10px] font-bold ${showCustomAvatarField === 'url' ? 'text-blue-600 underline' : 'text-gray-400 hover:text-blue-600'} transition`}
+                        className={`text-xs font-bold ${showCustomAvatarField === 'url' ? 'text-blue-600 underline' : 'text-gray-400 hover:text-blue-600'} transition`}
                       >
                         URL
                       </button>
                       <button
                         type="button"
                         onClick={() => setShowCustomAvatarField(showCustomAvatarField === 'upload' ? 'preset' : 'upload')}
-                        className={`text-[10px] font-bold ${showCustomAvatarField === 'upload' ? 'text-blue-600 underline' : 'text-gray-400 hover:text-blue-600'} transition`}
+                        className={`text-xs font-bold ${showCustomAvatarField === 'upload' ? 'text-blue-600 underline' : 'text-gray-400 hover:text-blue-600'} transition`}
                       >
                         Upload
                       </button>
@@ -399,7 +404,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       value={customAvatarUrl}
                       onChange={(e) => setCustomAvatarUrl(e.target.value)}
                       placeholder="https://images.unsplash.com/..."
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs text-gray-900 placeholder-slate-400 transition"
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base md:text-xs text-gray-900 placeholder-slate-400 transition"
                     />
                   ) : showCustomAvatarField === 'upload' ? (
                     <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-blue-400 transition" onClick={() => fileInputRef.current?.click()}>
@@ -409,7 +414,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       ) : (
                         <>
                           <Plus className="w-6 h-6 text-gray-400" />
-                          <span className="text-[10px] font-bold text-gray-500">Clicca per caricare</span>
+                          <span className="text-xs font-bold text-gray-500">Clicca per caricare</span>
                         </>
                       )}
                     </div>
@@ -462,7 +467,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
                 <div>
                   <h2 className="text-sm font-bold text-gray-950 font-display">Directory e Gestione Membri ({members.length})</h2>
-                  <p className="text-[11px] text-gray-400 mt-0.5">Gestisci i membri dello Spazio Lavoro, aggiorna lo stato o eliminali.</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Gestisci i membri dello Spazio Lavoro, aggiorna lo stato o eliminali.</p>
                 </div>
 
                 {/* Micro search bar */}
@@ -473,7 +478,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     value={adminSearch}
                     onChange={(e) => setAdminSearch(e.target.value)}
                     placeholder="Filtra membri..."
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-1.5 pl-8 pr-3 text-[11px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-1.5 pl-8 pr-3 text-base md:text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
                   />
                 </div>
               </div>
@@ -499,7 +504,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           />
                           <div>
                             <h3 className="text-xs font-bold text-gray-900 leading-tight">{member.name}</h3>
-                            <p className="text-[10px] text-gray-400 font-medium mt-0.5">{member.role}</p>
+                            <p className="text-xs text-gray-400 font-medium mt-0.5">{member.role}</p>
                           </div>
                         </div>
 
@@ -519,7 +524,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         ) : (
-                          <span className="text-[9px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md font-bold uppercase">
+                          <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md font-bold uppercase">
                             Admin (Tu)
                           </span>
                         )}
@@ -527,7 +532,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                       {/* Status and dropdown edit row */}
                       <div className="border-t border-gray-150 pt-3 flex items-center justify-between">
-                        <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                        <span className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                           member.status === 'Attiva' || member.status === 'Attivo' || member.status === 'Disponibile'
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                             : member.status === 'In riunione'
@@ -537,12 +542,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           {member.status}
                         </span>
 
-                        <div className="flex items-center gap-1.5 text-[10px]">
+                        <div className="flex items-center gap-1.5 text-xs">
                           <span className="text-gray-400 font-medium">Stato:</span>
                           <select
                             value={member.status}
                             onChange={(e) => onUpdateMemberStatus(member.id, e.target.value)}
-                            className="bg-white border border-gray-200 rounded-md text-[10px] font-bold text-slate-600 focus:outline-none py-0.5 px-1 cursor-pointer"
+                            className="bg-white border border-gray-200 rounded-md text-base md:text-xs font-bold text-slate-600 focus:outline-none py-0.5 px-1 cursor-pointer"
                           >
                             <option value="Attivo">Attivo</option>
                             <option value="Attiva">Attiva</option>
@@ -569,9 +574,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div key={decision.id} className="p-4 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-between gap-4">
                 <span className="text-xs font-bold text-gray-900">{decision.title}</span>
                 <div className="flex gap-2">
-                   <button onClick={() => { onExtendDeadline(decision.id, 24); addAuditLog(`Prorogato ${decision.title}`); }} className="text-[10px] font-bold text-blue-600 bg-white px-2 py-1 rounded-lg border border-blue-100 cursor-pointer">Proroga +24h</button>
-                   <button onClick={() => { onExpireImmediately(decision.id); addAuditLog(`Chiuso ${decision.title}`); }} className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100 cursor-pointer">Chiudi Ora</button>
-                   <button onClick={() => { openConfirm('Elimina', 'Eliminare?', () => { onDeleteDecision(decision.id); addAuditLog(`Eliminato ${decision.title}`); }); }} className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-1 rounded-lg border border-rose-100 cursor-pointer">Elimina</button>
+                   <button onClick={() => { onExtendDeadline(decision.id, 24); addAuditLog(`Prorogato ${decision.title}`); }} className="text-xs font-bold text-blue-600 bg-white px-2 py-1 rounded-lg border border-blue-100 cursor-pointer">Proroga +24h</button>
+                   <button onClick={() => { onExpireImmediately(decision.id); addAuditLog(`Chiuso ${decision.title}`); }} className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100 cursor-pointer">Chiudi Ora</button>
+                   <button onClick={() => { openConfirm('Elimina', 'Eliminare?', () => { onDeleteDecision(decision.id); addAuditLog(`Eliminato ${decision.title}`); }); }} className="text-xs font-bold text-rose-700 bg-rose-50 px-2 py-1 rounded-lg border border-rose-100 cursor-pointer">Elimina</button>
                 </div>
               </div>
             ))}
@@ -619,13 +624,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                     <h3 className="text-xs font-bold text-gray-900">Profilo Amministratore</h3>
-                    <input type="text" value={adminName} onChange={(e) => setAdminName(e.target.value)} onBlur={saveSettings} placeholder="Nome" className="w-full px-4 py-2 rounded-xl border border-gray-200 text-xs" />
-                    <input type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} onBlur={saveSettings} placeholder="Email" className="w-full px-4 py-2 rounded-xl border border-gray-200 text-xs" />
+                    <input type="text" value={adminName} onChange={(e) => setAdminName(e.target.value)} onBlur={saveSettings} placeholder="Nome" className="w-full px-4 py-2 rounded-xl border border-gray-200 text-base md:text-xs" />
+                    <input type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} onBlur={saveSettings} placeholder="Email" className="w-full px-4 py-2 rounded-xl border border-gray-200 text-base md:text-xs" />
                 </div>
                 <div className="space-y-4">
                     <h3 className="text-xs font-bold text-gray-900">Dettagli Azienda</h3>
-                    <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} onBlur={saveSettings} placeholder="Nome Società" className="w-full px-4 py-2 rounded-xl border border-gray-200 text-xs" />
-                    <input type="text" value={companyIndustry} onChange={(e) => setCompanyIndustry(e.target.value)} onBlur={saveSettings} placeholder="Settore" className="w-full px-4 py-2 rounded-xl border border-gray-200 text-xs" />
+                    <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} onBlur={saveSettings} placeholder="Nome Società" className="w-full px-4 py-2 rounded-xl border border-gray-200 text-base md:text-xs" />
+                    <input type="text" value={companyIndustry} onChange={(e) => setCompanyIndustry(e.target.value)} onBlur={saveSettings} placeholder="Settore" className="w-full px-4 py-2 rounded-xl border border-gray-200 text-base md:text-xs" />
                 </div>
             </div>
             <button onClick={saveSettings} className="w-full bg-blue-600 text-white text-xs font-bold py-2.5 rounded-xl cursor-pointer hover:bg-blue-700 transition">Salva Modifiche</button>

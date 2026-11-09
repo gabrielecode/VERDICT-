@@ -19,15 +19,15 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, removeTo
   };
 
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
+    <div className="fixed z-50 left-4 right-4 bottom-24 md:bottom-auto md:left-auto md:top-4 md:right-4 md:w-80 flex flex-col gap-2 pointer-events-none">
       <AnimatePresence>
         {toasts.map((toast) => (
           <motion.div
             key={toast.id}
-            initial={{ opacity: 0, x: 20, scale: 0.95 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 20, scale: 0.95 }}
-            className="bg-white p-4 rounded-xl shadow-lg border border-gray-100 flex items-center gap-3 min-w-[300px] pointer-events-auto"
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="bg-white dark:bg-gray-900 p-4 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 flex items-center gap-3 w-full pointer-events-auto"
           >
             {getIcon(toast.type)}
             <p className="text-xs font-semibold text-gray-800 flex-1">{toast.message}</p>
