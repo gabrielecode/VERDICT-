@@ -20,7 +20,7 @@ import {
   Upload
 } from 'lucide-react';
 import { Decision, DecisionType, DecisionAudience, DecisionOption } from '../types';
-import { CATEGORIES, getCurrentUserName } from '../utils';
+import { CATEGORIES } from '../utils';
 
 interface CreationModalProps {
   isOpen: boolean;
@@ -53,7 +53,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
     if (files) {
       Array.from(files).forEach((file: File) => {
         if (file.size > 1048576 || attachments.length >= 3) {
-          alert('File troppo grande o limite allegati raggiunto');
+          alert('File troppo grande (max 1MB) o limite allegati raggiunto');
           return;
         }
         const reader = new FileReader();
@@ -115,7 +115,6 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
     setOptions(newOpts);
   };
 
-  // Quick deadline helpers
   const setQuickDeadline = (hoursAhead: number) => {
     const futureDate = new Date(Date.now() + 1000 * 60 * 60 * hoursAhead);
     const yyyy = futureDate.getFullYear();
@@ -128,16 +127,14 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
     setDeadlineTime(`${hh}:${min}`);
   };
 
-  // Validation
   const isStepValid = () => {
     switch (step) {
       case 1:
         return title.trim().length >= 4 && description.trim().length >= 10;
       case 2:
-        return true; // Any type is selected by default
+        return true;
       case 3:
         if (decisionType === 'yes_no' || decisionType === 'rating') return true;
-        // Single/multiple choice options must be non-empty and unique (case-insensitive, trim)
         const validOpts = options.map(o => o.trim().toLowerCase()).filter(o => o.length > 0);
         if (validOpts.length < 2) return false;
         const uniqueOpts = new Set(validOpts);
@@ -162,19 +159,18 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
   };
 
   const handleConfirmPublish = () => {
-    // Construct final decision object
     const finalDeadline = new Date(`${deadlineDate}T${deadlineTime}`).toISOString();
     
     const formattedOptions: DecisionOption[] = options
       .filter(opt => opt.trim().length > 0)
       .map((text, index) => ({
-        id: `opt-custom-${Date.now()}-${index}`,
+        id: `opt-${Date.now()}-${index}`,
         text: text,
         votes: 0
       }));
 
     const newDecision: Decision = {
-      id: `dec-${Date.now()}`,
+      id: '', // Will be set by Firestore
       title: title.trim(),
       description: description.trim(),
       type: decisionType,
@@ -182,9 +178,9 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
       deadline: finalDeadline,
       audience: audience,
       creator: {
-        name: getCurrentUserName(),
-        role: 'Autore',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces&q=80'
+        name: '', // Will be set in App.tsx
+        role: '',
+        avatar: ''
       },
       options: formattedOptions,
       participants: [],
@@ -207,7 +203,6 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto flex items-end sm:items-center justify-center p-0 sm:p-4">
-      {/* Overlay Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -216,30 +211,27 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
         className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs"
       />
 
-      {/* Modal Container */}
       <motion.div
         initial={{ opacity: 0, scale: 0.97, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.97, y: 10 }}
         transition={{ type: 'spring', duration: 0.4 }}
-        className="bg-white w-full max-w-2xl rounded-none sm:rounded-3xl shadow-xl relative overflow-hidden flex flex-col z-10 border border-gray-200 max-h-[100dvh] sm:max-h-[90dvh]"
+        className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-none sm:rounded-3xl shadow-xl relative overflow-hidden flex flex-col z-10 border border-gray-200 dark:border-gray-800 max-h-[100dvh] sm:max-h-[90dvh]"
       >
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50 shrink-0">
+        <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50 dark:bg-gray-950 shrink-0">
           <div>
             <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">Crea un nuovo Verdict</span>
-            <h2 className="text-xl font-bold text-gray-950 font-display">Procedura Guidata</h2>
+            <h2 className="text-xl font-bold text-gray-950 dark:text-white font-display">Procedura Guidata</h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-gray-150 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+            className="p-1.5 rounded-full hover:bg-gray-150 dark:hover:bg-gray-800 text-slate-400 hover:text-slate-600 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Step Indicator and Progress Bar */}
-        <div className="bg-gray-50/50 border-b border-gray-150 shrink-0">
+        <div className="bg-gray-50/50 dark:bg-gray-950 border-b border-gray-150 dark:border-gray-800 shrink-0">
           <div className="px-6 py-3">
             <span className="text-xs font-bold text-blue-600">
               Passo {step} di 5 · {
@@ -251,7 +243,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
               }
             </span>
           </div>
-          <div className="bg-gray-100 h-1.5 w-full">
+          <div className="bg-gray-100 dark:bg-gray-800 h-1.5 w-full">
             <motion.div
               initial={false}
               animate={{ width: `${(step / 5) * 100}%` }}
@@ -260,7 +252,6 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
           </div>
         </div>
 
-        {/* Modal Scrollable Body */}
         <div className="p-8 flex-1 min-h-0 overflow-y-auto">
           <AnimatePresence mode="wait">
             {step === 1 && (
@@ -272,14 +263,14 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                 className="space-y-6"
               >
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Titolo del Verdict</label>
+                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Titolo del Verdict</label>
                   <input
                     type="text"
                     value={title}
                     maxLength={80}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="es. Quale logo preferisci per la startup?"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-slate-400 font-medium transition text-base md:text-xs"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-base md:text-xs font-medium placeholder-slate-400 transition"
                   />
                   {title.length > 0 && title.length < 4 && (
                     <p className="text-red-500 text-xs mt-1 font-mono">Il titolo deve contenere almeno 4 caratteri.</p>
@@ -287,14 +278,14 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Descrizione / Contesto</label>
+                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Descrizione / Contesto</label>
                   <textarea
                     rows={4}
                     value={description}
                     maxLength={500}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Fornisci dettagli sul contesto, file di riferimento, o criteri che il team dovrebbe considerare..."
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-slate-400 font-normal transition resize-none text-base md:text-xs"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-base md:text-xs font-normal placeholder-slate-400 transition resize-none"
                   />
                   {description.length > 0 && description.length < 10 && (
                     <p className="text-red-500 text-xs mt-1 font-mono">Descrivi meglio il contesto (almeno 10 caratteri).</p>
@@ -302,7 +293,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Categoria</label>
+                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Categoria</label>
                   <div className="flex flex-wrap gap-2">
                     {CATEGORIES.map((cat) => (
                       <button
@@ -312,7 +303,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                         className={`px-4 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
                           category === cat
                             ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
-                            : 'bg-white border-gray-200 text-slate-600 hover:border-gray-300'
+                            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-slate-600 dark:text-gray-400 hover:border-gray-300'
                         }`}
                       >
                         {cat}
@@ -321,17 +312,16 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                   </div>
                 </div>
 
-                {/* File / Photo Upload Section */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
                       <Paperclip className="w-3.5 h-3.5 text-blue-600" />
                       Allegati, File o Foto (Opzionale)
                     </label>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg flex items-center gap-1 transition cursor-pointer"
+                      className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg flex items-center gap-1 transition cursor-pointer"
                     >
                       <Upload className="w-3.5 h-3.5" />
                       Carica File/Foto
@@ -349,13 +339,13 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                   {attachments.length > 0 ? (
                     <div className="grid grid-cols-3 gap-2.5 pt-1">
                       {attachments.map((att, idx) => (
-                        <div key={idx} className="relative group rounded-xl border border-gray-200 overflow-hidden bg-gray-50 aspect-video flex items-center justify-center">
+                        <div key={idx} className="relative group rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-gray-50 dark:bg-gray-800 aspect-video flex items-center justify-center">
                           {att.startsWith('data:image/') ? (
                             <img src={att} alt="Attachment" className="w-full h-full object-cover" />
                           ) : (
                             <div className="p-2 text-center">
                               <Paperclip className="w-6 h-6 text-blue-600 mx-auto mb-1" />
-                              <span className="text-xs font-bold text-gray-600 truncate block">File #{idx + 1}</span>
+                              <span className="text-xs font-bold text-gray-600 dark:text-gray-400 truncate block">File #{idx + 1}</span>
                             </div>
                           )}
                           <button
@@ -371,7 +361,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                   ) : (
                     <div
                       onClick={() => fileInputRef.current?.click()}
-                      className="border-2 border-dashed border-gray-200 hover:border-blue-400 rounded-2xl p-4 text-center cursor-pointer transition bg-gray-50/50"
+                      className="border-2 border-dashed border-gray-200 dark:border-gray-700 hover:border-blue-400 rounded-2xl p-4 text-center cursor-pointer transition bg-gray-50/50 dark:bg-gray-800/50"
                     >
                       <p className="text-xs text-slate-400 font-medium">Trascina qui i file o clicca per caricare foto e documenti di supporto</p>
                     </div>
@@ -389,94 +379,38 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                 className="space-y-4"
               >
                 <div className="text-center max-w-md mx-auto mb-6">
-                  <h3 className="text-lg font-bold text-gray-900">Seleziona il tipo di decisione</h3>
-                  <p className="text-slate-500 text-sm mt-1">Scegli come gli utenti dovranno esprimere il loro voto.</p>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">Seleziona il tipo di decisione</h3>
+                  <p className="text-slate-500 dark:text-gray-400 text-sm mt-1">Scegli come gli utenti dovranno esprimere il loro voto.</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  {/* Single Choice */}
-                  <div
-                    onClick={() => setDecisionType('single')}
-                    className={`p-5 rounded-2xl border-2 cursor-pointer transition flex flex-col justify-between ${
-                      decisionType === 'single'
-                        ? 'border-blue-600 bg-blue-50/10'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className={`p-2.5 rounded-xl ${decisionType === 'single' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-slate-500'}`}>
-                        <CheckSquare className="w-5 h-5" />
+                  {[
+                    { id: 'single', label: 'Scelta Singola', icon: CheckSquare, desc: 'Gli utenti possono votare solo una opzione tra quelle inserite.' },
+                    { id: 'multiple', label: 'Scelta Multipla', icon: ListTodo, desc: 'Gli utenti possono scegliere più preferenze contemporaneamente.' },
+                    { id: 'yes_no', label: 'Sì o No (Bivio)', icon: HelpCircle, desc: 'Un semplice bivio decisionale per approvazioni o rifiuti rapidi.' },
+                    { id: 'rating', label: 'Valutazione a Stelle', icon: Star, desc: 'Gli utenti valutano l\'oggetto con un punteggio qualitativo da 1 a 5 stelle.' },
+                  ].map((type) => (
+                    <div
+                      key={type.id}
+                      onClick={() => setDecisionType(type.id as DecisionType)}
+                      className={`p-5 rounded-2xl border-2 cursor-pointer transition flex flex-col justify-between ${
+                        decisionType === type.id
+                          ? 'border-blue-600 bg-blue-50/10 dark:bg-blue-900/10'
+                          : 'border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 bg-white dark:bg-gray-800'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className={`p-2.5 rounded-xl ${decisionType === type.id ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-slate-500 dark:text-gray-400'}`}>
+                          <type.icon className="w-5 h-5" />
+                        </div>
+                        {decisionType === type.id && <CheckCircle2 className="w-5 h-5 text-blue-600" />}
                       </div>
-                      {decisionType === 'single' && <CheckCircle2 className="w-5 h-5 text-blue-600" />}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-sm">Scelta Singola</h4>
-                      <p className="text-slate-500 text-xs mt-1">Gli utenti possono votare solo una opzione tra quelle inserite.</p>
-                    </div>
-                  </div>
-
-                  {/* Multiple Choice */}
-                  <div
-                    onClick={() => setDecisionType('multiple')}
-                    className={`p-5 rounded-2xl border-2 cursor-pointer transition flex flex-col justify-between ${
-                      decisionType === 'multiple'
-                        ? 'border-blue-600 bg-blue-50/10'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className={`p-2.5 rounded-xl ${decisionType === 'multiple' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-slate-500'}`}>
-                        <ListTodo className="w-5 h-5" />
+                      <div>
+                        <h4 className="font-bold text-gray-900 dark:text-white text-sm">{type.label}</h4>
+                        <p className="text-slate-500 dark:text-gray-400 text-xs mt-1">{type.desc}</p>
                       </div>
-                      {decisionType === 'multiple' && <CheckCircle2 className="w-5 h-5 text-blue-600" />}
                     </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-sm">Scelta Multipla</h4>
-                      <p className="text-slate-500 text-xs mt-1">Gli utenti possono scegliere più preferenze contemporaneamente.</p>
-                    </div>
-                  </div>
-
-                  {/* Yes / No */}
-                  <div
-                    onClick={() => setDecisionType('yes_no')}
-                    className={`p-5 rounded-2xl border-2 cursor-pointer transition flex flex-col justify-between ${
-                      decisionType === 'yes_no'
-                        ? 'border-blue-600 bg-blue-50/10'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className={`p-2.5 rounded-xl ${decisionType === 'yes_no' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-slate-500'}`}>
-                        <HelpCircle className="w-5 h-5" />
-                      </div>
-                      {decisionType === 'yes_no' && <CheckCircle2 className="w-5 h-5 text-blue-600" />}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-sm">Sì o No (Bivio)</h4>
-                      <p className="text-slate-500 text-xs mt-1">Un semplice bivio decisionale per approvazioni o rifiuti rapidi.</p>
-                    </div>
-                  </div>
-
-                  {/* Rating */}
-                  <div
-                    onClick={() => setDecisionType('rating')}
-                    className={`p-5 rounded-2xl border-2 cursor-pointer transition flex flex-col justify-between ${
-                      decisionType === 'rating'
-                        ? 'border-blue-600 bg-blue-50/10'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className={`p-2.5 rounded-xl ${decisionType === 'rating' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-slate-500'}`}>
-                        <Star className="w-5 h-5" />
-                      </div>
-                      {decisionType === 'rating' && <CheckCircle2 className="w-5 h-5 text-blue-600" />}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-sm">Valutazione a Stelle</h4>
-                      <p className="text-slate-500 text-xs mt-1">Gli utenti valutano l'oggetto con un punteggio qualitativo da 1 a 5 stelle.</p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </motion.div>
             )}
@@ -490,20 +424,20 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                 className="space-y-6"
               >
                 <div>
-                  <h3 className="text-base font-bold text-gray-900 mb-1">Configura le opzioni di voto</h3>
-                  <p className="text-slate-500 text-xs mb-4">Compila le scelte disponibili per gli utenti del tuo Verdict.</p>
+                  <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">Configura le opzioni di voto</h3>
+                  <p className="text-slate-500 dark:text-gray-400 text-xs mb-4">Compila le scelte disponibili per gli utenti del tuo Verdict.</p>
                 </div>
 
                 {decisionType === 'yes_no' && (
-                  <div className="space-y-4 p-5 bg-gray-50 rounded-2xl border border-gray-100">
-                    <p className="text-xs text-slate-500 font-medium">Per i bivi decisionali (Sì/No), le opzioni sono preconfigurate per chiarezza ma puoi modificarle se desideri:</p>
+                  <div className="space-y-4 p-5 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+                    <p className="text-xs text-slate-500 dark:text-gray-400 font-medium">Per i bivi decisionali (Sì/No), le opzioni sono preconfigurate ma puoi modificarle:</p>
                     <div className="space-y-3">
                       <input
                         type="text"
                         value={options[0]}
                         maxLength={80}
                         onChange={(e) => handleOptionChange(0, e.target.value)}
-                        className="w-full bg-white px-4 py-2.5 border border-gray-200 rounded-xl text-base md:text-xs font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full bg-white dark:bg-gray-900 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-base md:text-xs font-semibold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Opzione positiva"
                       />
                       <input
@@ -511,7 +445,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                         value={options[1]}
                         maxLength={80}
                         onChange={(e) => handleOptionChange(1, e.target.value)}
-                        className="w-full bg-white px-4 py-2.5 border border-gray-200 rounded-xl text-base md:text-xs font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full bg-white dark:bg-gray-900 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-base md:text-xs font-semibold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Opzione negativa"
                       />
                     </div>
@@ -519,17 +453,13 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                 )}
 
                 {decisionType === 'rating' && (
-                  <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 text-center space-y-3">
+                  <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 text-center space-y-3">
                     <div className="flex justify-center gap-1.5 text-amber-400">
-                      <Star className="w-8 h-8 fill-amber-400 text-amber-400" />
-                      <Star className="w-8 h-8 fill-amber-400 text-amber-400" />
-                      <Star className="w-8 h-8 fill-amber-400 text-amber-400" />
-                      <Star className="w-8 h-8 fill-amber-400 text-amber-400" />
-                      <Star className="w-8 h-8 fill-amber-400 text-amber-400" />
+                      {[1,2,3,4,5].map(s => <Star key={s} className="w-8 h-8 fill-amber-400 text-amber-400" />)}
                     </div>
-                    <h4 className="font-bold text-gray-900 text-sm">Pronto per il Rating qualitativo</h4>
-                    <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                      Gli utenti vedranno una scala interattiva a 5 stelle per valutare la proposta. I risultati verranno calcolati come media pesata dei voti ricevuti.
+                    <h4 className="font-bold text-gray-900 dark:text-white text-sm">Pronto per il Rating qualitativo</h4>
+                    <p className="text-xs text-slate-500 dark:text-gray-400 max-w-sm mx-auto">
+                      Gli utenti vedranno una scala interattiva a 5 stelle. I risultati verranno calcolati come media pesata.
                     </p>
                   </div>
                 )}
@@ -545,13 +475,13 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                           maxLength={80}
                           onChange={(e) => handleOptionChange(idx, e.target.value)}
                           placeholder={`es. Opzione alternativa ${idx + 1}`}
-                          className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-base md:text-xs text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                          className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-base md:text-xs text-gray-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                         />
                         {options.length > 2 && (
                           <button
                             type="button"
                             onClick={() => handleRemoveOption(idx)}
-                            className="p-2 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition cursor-pointer"
+                            className="p-2 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition cursor-pointer"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -563,7 +493,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                       <button
                         type="button"
                         onClick={handleAddOption}
-                        className="mt-2 flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100/70 px-4 py-2 rounded-xl transition cursor-pointer"
+                        className="mt-2 flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100/70 dark:hover:bg-blue-900/50 px-4 py-2 rounded-xl transition cursor-pointer"
                       >
                         <Plus className="w-4 h-4" />
                         Aggiungi un'opzione
@@ -582,9 +512,8 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                 exit={{ opacity: 0, x: -10 }}
                 className="space-y-6"
               >
-                {/* Deadline Picker */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                     <Calendar className="w-4 h-4 text-blue-600" />
                     Seleziona Data e Ora di Scadenza
                   </label>
@@ -594,118 +523,67 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                       value={deadlineDate}
                       onChange={(e) => setDeadlineDate(e.target.value)}
                       min={new Date().toISOString().slice(0, 10)}
-                      className="px-4 py-3 border border-gray-200 rounded-xl text-base md:text-xs font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      className="px-4 py-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-base md:text-xs font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <input
                       type="time"
                       value={deadlineTime}
                       onChange={(e) => setDeadlineTime(e.target.value)}
-                      className="px-4 py-3 border border-gray-200 rounded-xl text-base md:text-xs font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      className="px-4 py-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-base md:text-xs font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
 
-                  {/* Quick helpers */}
                   <div className="flex flex-wrap gap-2 pt-1.5">
-                    <span className="text-xs text-slate-400 self-center font-medium mr-1">Preimposta:</span>
-                    <button
-                      type="button"
-                      onClick={() => setQuickDeadline(1)}
-                      className="text-xs bg-gray-50 hover:bg-gray-100 border border-gray-200 text-slate-600 px-3 py-1.5 rounded-lg font-medium transition cursor-pointer"
-                    >
-                      +1 Ora
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuickDeadline(24)}
-                      className="text-xs bg-gray-50 hover:bg-gray-100 border border-gray-200 text-slate-600 px-3 py-1.5 rounded-lg font-medium transition cursor-pointer"
-                    >
-                      +24 Ore
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuickDeadline(72)}
-                      className="text-xs bg-gray-50 hover:bg-gray-100 border border-gray-200 text-slate-600 px-3 py-1.5 rounded-lg font-medium transition cursor-pointer"
-                    >
-                      +3 Giorni
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuickDeadline(168)}
-                      className="text-xs bg-gray-50 hover:bg-gray-100 border border-gray-200 text-slate-600 px-3 py-1.5 rounded-lg font-medium transition cursor-pointer"
-                    >
-                      +1 Settimana
-                    </button>
+                    <span className="text-xs text-slate-400 dark:text-gray-500 self-center font-medium mr-1">Preimposta:</span>
+                    {[
+                      { h: 1, label: '+1 Ora' },
+                      { h: 24, label: '+24 Ore' },
+                      { h: 72, label: '+3 Giorni' },
+                      { h: 168, label: '+1 Settimana' }
+                    ].map(q => (
+                      <button
+                        key={q.h}
+                        type="button"
+                        onClick={() => setQuickDeadline(q.h)}
+                        className="text-xs bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 text-slate-600 dark:text-gray-300 px-3 py-1.5 rounded-lg font-medium transition cursor-pointer"
+                      >
+                        {q.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                {/* Audience visibility */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                     Chi può partecipare? (Visibilità)
                   </label>
                   <div className="space-y-2">
-                    {/* Public */}
-                    <div
-                      onClick={() => setAudience('public')}
-                      className={`p-3.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${
-                        audience === 'public'
-                          ? 'border-blue-600 bg-blue-50/25'
-                          : 'border-gray-150 bg-white hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`p-1.5 rounded-lg ${audience === 'public' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-slate-500'}`}>
-                          <Globe className="w-4 h-4" />
+                    {[
+                      { id: 'public', label: 'Pubblico', icon: Globe, desc: 'Chiunque abbia il link condivisibile può visualizzare e votare.' },
+                      { id: 'restricted', label: 'Membri del Team (Riservato)', icon: Shield, desc: 'Limitato ai soli utenti loggati.' },
+                      { id: 'private', label: 'Privato', icon: Lock, desc: 'Solo i membri specificati che ricevono un invito diretto.' },
+                    ].map((aud) => (
+                      <div
+                        key={aud.id}
+                        onClick={() => setAudience(aud.id as DecisionAudience)}
+                        className={`p-3.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${
+                          audience === aud.id
+                            ? 'border-blue-600 bg-blue-50/25 dark:bg-blue-900/20'
+                            : 'border-gray-150 dark:border-gray-800 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`p-1.5 rounded-lg ${audience === aud.id ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-slate-500 dark:text-gray-400'}`}>
+                            <aud.icon className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-gray-900 dark:text-white text-xs">{aud.label}</h4>
+                            <p className="text-xs text-slate-400 dark:text-gray-500 mt-0.5">{aud.desc}</p>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="font-bold text-gray-900 text-xs">Pubblico</h4>
-                          <p className="text-xs text-slate-400 mt-0.5">Chiunque abbia il link condivisibile può visualizzare e votare.</p>
-                        </div>
+                        {audience === aud.id && <CheckCircle2 className="w-4 h-4 text-blue-600" />}
                       </div>
-                      {audience === 'public' && <CheckCircle2 className="w-4 h-4 text-blue-600" />}
-                    </div>
-
-                    {/* Restricted */}
-                    <div
-                      onClick={() => setAudience('restricted')}
-                      className={`p-3.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${
-                        audience === 'restricted'
-                          ? 'border-blue-600 bg-blue-50/25'
-                          : 'border-gray-150 bg-white hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`p-1.5 rounded-lg ${audience === 'restricted' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-slate-500'}`}>
-                          <Shield className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-gray-900 text-xs">Membri del Team (Riservato)</h4>
-                          <p className="text-xs text-slate-400 mt-0.5">Limitato ai soli utenti loggati appartenenti alla tua organizzazione.</p>
-                        </div>
-                      </div>
-                      {audience === 'restricted' && <CheckCircle2 className="w-4 h-4 text-blue-600" />}
-                    </div>
-
-                    {/* Private */}
-                    <div
-                      onClick={() => setAudience('private')}
-                      className={`p-3.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${
-                        audience === 'private'
-                          ? 'border-blue-600 bg-blue-50/25'
-                          : 'border-gray-150 bg-white hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`p-1.5 rounded-lg ${audience === 'private' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-slate-500'}`}>
-                          <Lock className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-gray-900 text-xs">Privato</h4>
-                          <p className="text-xs text-slate-400 mt-0.5">Solo i membri specificati che ricevono un invito email diretto.</p>
-                        </div>
-                      </div>
-                      {audience === 'private' && <CheckCircle2 className="w-4 h-4 text-blue-600" />}
-                    </div>
+                    ))}
                   </div>
                 </div>
               </motion.div>
@@ -720,60 +598,53 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                 className="space-y-6"
               >
                 <div className="text-center max-w-sm mx-auto mb-2">
-                  <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 mx-auto mb-3 border border-blue-100">
+                  <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 mx-auto mb-3 border border-blue-100 dark:border-blue-800">
                     <Eye className="w-6 h-6" />
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900">Pronto per il lancio!</h3>
-                  <p className="text-slate-500 text-xs mt-1">
-                    Ecco un'anteprima dei dettagli principali che verranno creati. Ricontrolla prima di pubblicare.
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">Pronto per il lancio!</h3>
+                  <p className="text-slate-500 dark:text-gray-400 text-xs mt-1">
+                    Controlla i dettagli prima di pubblicare sul Cloud.
                   </p>
                 </div>
 
-                {/* Simulated preview box */}
-                <div className="bg-gray-50 rounded-2xl p-5 border border-gray-200 space-y-4">
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-5 border border-gray-200 dark:border-gray-700 space-y-4 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-blue-600 px-2.5 py-0.5 bg-blue-50 rounded-md border border-blue-100">
+                    <span className="text-xs font-bold text-blue-600 dark:text-blue-400 px-2.5 py-0.5 bg-blue-50 dark:bg-blue-900/30 rounded-md border border-blue-100 dark:border-blue-800">
                       {category}
                     </span>
-                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                    <span className="text-xs text-slate-400 dark:text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1">
                       {audience === 'public' ? <Globe className="w-3 h-3 text-emerald-500" /> : <Lock className="w-3 h-3 text-amber-500" />}
                       {audience === 'public' ? 'Pubblico' : audience === 'restricted' ? 'Riservato' : 'Privato'}
                     </span>
                   </div>
 
                   <div>
-                    <h4 className="font-bold text-gray-900 text-base leading-snug">{title || 'Senza titolo'}</h4>
-                    <p className="text-slate-500 text-xs mt-1 font-normal line-clamp-3">{description || 'Nessuna descrizione fornita.'}</p>
+                    <h4 className="font-bold text-gray-900 dark:text-white text-base leading-snug">{title || 'Senza titolo'}</h4>
+                    <p className="text-slate-500 dark:text-gray-400 text-xs mt-1 font-normal line-clamp-3">{description || 'Nessuna descrizione fornita.'}</p>
                   </div>
 
-                  {/* Options visualization */}
                   <div className="space-y-1.5 pt-2">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Opzioni configurate:</span>
+                    <span className="text-xs font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider block">Opzioni:</span>
                     {decisionType === 'rating' ? (
                       <div className="flex gap-1 text-amber-400 py-1">
                         {[1, 2, 3, 4, 5].map(s => <Star key={s} className="w-4 h-4 fill-amber-400" />)}
-                        <span className="text-xs text-slate-500 font-medium ml-1">Scala di valutazione</span>
+                        <span className="text-xs text-slate-500 dark:text-gray-400 font-medium ml-1">Scala di valutazione</span>
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 gap-1.5">
                         {options.filter(o => o.trim().length > 0).slice(0, 3).map((opt, i) => (
-                          <div key={i} className="flex items-center gap-2 text-xs text-slate-600 bg-white border border-gray-100 px-3 py-1.5 rounded-lg font-medium">
-                            <span className="text-blue-600 text-xs font-extrabold">{i+1}.</span>
+                          <div key={i} className="flex items-center gap-2 text-xs text-slate-600 dark:text-gray-300 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 px-3 py-1.5 rounded-lg font-medium">
+                            <span className="text-blue-600 dark:text-blue-400 text-xs font-extrabold">{i+1}.</span>
                             <span className="truncate">{opt}</span>
                           </div>
                         ))}
-                        {options.filter(o => o.trim().length > 0).length > 3 && (
-                          <span className="text-xs text-slate-400 font-semibold italic pl-1">
-                            + altre {options.filter(o => o.trim().length > 0).length - 3} opzioni
-                          </span>
-                        )}
                       </div>
                     )}
                   </div>
 
-                  <div className="border-t border-gray-150 pt-3 flex items-center justify-between text-xs text-slate-500 font-medium">
+                  <div className="border-t border-gray-150 dark:border-gray-700 pt-3 flex items-center justify-between text-xs text-slate-500 dark:text-gray-400 font-medium">
                     <span>Scadenza: {deadlineDate ? `${deadlineDate} alle ${deadlineTime}` : 'Non definita'}</span>
-                    <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md font-bold uppercase text-xs">Stato: Attivo</span>
+                    <span className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-md font-bold uppercase text-xs">Stato: Attivo</span>
                   </div>
                 </div>
               </motion.div>
@@ -781,16 +652,15 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
           </AnimatePresence>
         </div>
 
-        {/* Footer Actions */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between shrink-0">
+        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
           <button
             type="button"
             onClick={handlePrev}
             disabled={step === 1}
             className={`flex items-center gap-1.5 text-xs font-semibold px-4 py-2.5 rounded-xl transition cursor-pointer ${
               step === 1
-                ? 'text-slate-300 cursor-not-allowed'
-                : 'text-slate-600 hover:bg-gray-100'
+                ? 'text-slate-300 dark:text-gray-700 cursor-not-allowed'
+                : 'text-slate-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
             }`}
           >
             <ChevronLeft className="w-4 h-4" />
@@ -804,8 +674,8 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
               disabled={!isStepValid()}
               className={`flex items-center gap-1 text-xs font-bold px-5 py-2.5 rounded-xl transition cursor-pointer ${
                 isStepValid()
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-blue-100'
-                  : 'bg-gray-100 text-slate-400 cursor-not-allowed'
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
+                  : 'bg-gray-100 dark:bg-gray-800 text-slate-400 dark:text-gray-600 cursor-not-allowed'
               }`}
             >
               Avanti
@@ -815,7 +685,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
             <button
               type="button"
               onClick={handleConfirmPublish}
-              className="flex items-center gap-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl transition cursor-pointer shadow-md shadow-blue-100"
+              className="flex items-center gap-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl transition cursor-pointer shadow-md"
             >
               Pubblica Verdict
               <CheckCircle2 className="w-4.5 h-4.5" />

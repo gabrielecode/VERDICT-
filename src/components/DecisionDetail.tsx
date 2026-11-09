@@ -252,7 +252,7 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
         
         {/* Left Column: Decision description, metadata, countdown */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-3xl p-8 border border-gray-200 shadow-xs space-y-6">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 border border-gray-200 dark:border-gray-800 shadow-xs space-y-6">
             
             {/* Category and Creator Info */}
             <div className="flex items-center justify-between">
@@ -317,10 +317,10 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
           </div>
 
           {/* Voting Area Options Card */}
-          <div className="bg-white rounded-3xl p-8 border border-gray-200 shadow-xs space-y-6">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 border border-gray-200 dark:border-gray-800 shadow-xs space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-base font-bold text-gray-900">Espressione del Voto</h2>
+                <h2 className="text-base font-bold text-gray-900 dark:text-white">Espressione del Voto</h2>
                 <p className="text-gray-500 text-xs mt-0.5">
                   {isExpired
                     ? 'La votazione è chiusa. Risultati finali:'
@@ -332,7 +332,7 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
                 </p>
               </div>
 
-              <div className="flex items-center gap-1.5 text-xs text-gray-500 font-semibold bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-150">
+              <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 font-semibold bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-150 dark:border-gray-700">
                 <Users className="w-4 h-4 text-blue-600" />
                 <span>{totalVotes} {totalVotes === 1 ? 'Voto' : 'Voti'}</span>
               </div>
@@ -592,52 +592,52 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
         <div className="lg:col-span-1 space-y-6">
           
           {/* Timer card */}
-          <div className="bg-white rounded-3xl p-6 border border-gray-200 shadow-xs text-center space-y-4">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 border border-gray-200 dark:border-gray-800 shadow-xs text-center space-y-4">
             <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-gray-400 uppercase tracking-widest">
               <Clock className="w-4 h-4 text-blue-600" />
               Tempo di Votazione
             </div>
 
             {isExpired ? (
-              <div className="py-4 bg-gray-50 rounded-2xl border border-gray-150">
+              <div className="py-4 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-150 dark:border-gray-700">
                 <span className="text-sm font-bold text-red-600 uppercase tracking-wide font-mono">Votazione Conclusa</span>
                 <p className="text-xs text-gray-400 mt-0.5">Il termine utile è scaduto.</p>
               </div>
             ) : (
               <div className="grid grid-cols-4 gap-2 pt-2">
-                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                  <span className="text-xl font-extrabold text-gray-800 block leading-none font-mono">{timerBreakdown?.d}</span>
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
+                  <span className="text-xl font-extrabold text-gray-800 dark:text-gray-100 block leading-none font-mono">{timerBreakdown?.d}</span>
                   <span className="text-xs text-gray-400 font-semibold block mt-1">Giorni</span>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                  <span className="text-xl font-extrabold text-gray-800 block leading-none font-mono">{timerBreakdown?.h}</span>
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
+                  <span className="text-xl font-extrabold text-gray-800 dark:text-gray-100 block leading-none font-mono">{timerBreakdown?.h}</span>
                   <span className="text-xs text-gray-400 font-semibold block mt-1">Ore</span>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                  <span className="text-xl font-extrabold text-gray-800 block leading-none font-mono">{timerBreakdown?.m}</span>
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
+                  <span className="text-xl font-extrabold text-gray-800 dark:text-gray-100 block leading-none font-mono">{timerBreakdown?.m}</span>
                   <span className="text-xs text-gray-400 font-semibold block mt-1">Min</span>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
                   <span className="text-xl font-extrabold text-red-600 block leading-none font-mono animate-pulse">{timerBreakdown?.s}</span>
                   <span className="text-xs text-gray-400 font-semibold block mt-1">Sec</span>
                 </div>
               </div>
             )}
 
-            <div className="text-xs text-gray-500 font-normal border-t border-gray-100 pt-4 space-y-2">
+            <div className="text-xs text-gray-500 font-normal border-t border-gray-100 dark:border-gray-800 pt-4 space-y-2">
               <div className="flex justify-between">
                 <span className="font-medium text-gray-400">Scadenza:</span>
-                <span className="font-semibold text-gray-700">{formatDate(decision.deadline)}</span>
+                <span className="font-semibold text-gray-700 dark:text-gray-300">{formatDate(decision.deadline)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="font-medium text-gray-400">Tipo:</span>
-                <span className="font-semibold text-gray-700 capitalize">
+                <span className="font-semibold text-gray-700 dark:text-gray-300 capitalize">
                   {decision.type === 'single' ? 'Scelta Singola' : decision.type === 'multiple' ? 'Scelta Multipla' : decision.type === 'yes_no' ? 'Sì / No' : 'Valutazione'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="font-medium text-gray-400">Visibilità:</span>
-                <span className="font-semibold text-gray-700 capitalize">{decision.audience}</span>
+                <span className="font-semibold text-gray-700 dark:text-gray-300 capitalize">{decision.audience}</span>
               </div>
             </div>
           </div>
@@ -667,11 +667,11 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
       </div>
 
       {/* COMMENTS SECTION AT BOTTOM */}
-      <div id="comments-section" className="bg-white rounded-3xl p-8 border border-gray-200 shadow-xs space-y-6">
-        <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+      <div id="comments-section" className="bg-white dark:bg-gray-900 rounded-3xl p-8 border border-gray-200 dark:border-gray-800 shadow-xs space-y-6">
+        <div className="flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-gray-800">
           <MessageSquare className="w-5 h-5 text-blue-600" />
-          <h2 className="text-lg font-bold text-gray-900">Discussione e Commenti</h2>
-          <span className="bg-gray-100 text-gray-600 text-xs font-bold px-2 py-0.5 rounded-md">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">Discussione e Commenti</h2>
+          <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-bold px-2 py-0.5 rounded-md">
             {decision.comments.length}
           </span>
         </div>
