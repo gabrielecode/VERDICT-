@@ -1,0 +1,120 @@
+{
+  "entities": {
+    "Decision": {
+      "title": "Decision",
+      "description": "A decision proposal with options and votes",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Title of the decision"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Context and details"
+        },
+        "category": {
+          "type": "string",
+          "description": "Topic category"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["single", "multiple", "yes_no", "rating"],
+          "description": "Type of voting mechanism"
+        },
+        "deadline": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When voting closes"
+        },
+        "audience": {
+          "type": "string",
+          "enum": ["public", "restricted", "private"],
+          "description": "Visibility level"
+        },
+        "creator": {
+          "type": "object",
+          "properties": {
+            "uid": { "type": "string" },
+            "name": { "type": "string" },
+            "avatar": { "type": "string" },
+            "role": { "type": "string" }
+          }
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "number" },
+              "text": { "type": "string" },
+              "votes": { "type": "number" }
+            }
+          }
+        },
+        "votes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "userId": { "type": "string" },
+              "optionIds": { "type": "array", "items": { "type": "string" } },
+              "ratingValue": { "type": "number" },
+              "timestamp": { "type": "string", "format": "date-time" }
+            }
+          }
+        },
+        "comments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "author": { "type": "string" },
+              "avatar": { "type": "string" },
+              "text": { "type": "string" },
+              "timestamp": { "type": "string", "format": "date-time" }
+            }
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "attachments": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["title", "description", "category", "type", "deadline", "creator", "options"]
+    },
+    "Member": {
+      "title": "Member",
+      "description": "A team member profile",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "surname": { "type": "string" },
+        "department": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string" },
+        "avatar": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["name", "surname", "department", "email", "role", "status"]
+    }
+  },
+  "firestore": {
+    "decisions": {
+      "schema": "Decision",
+      "description": "Collection of all decision proposals"
+    },
+    "members": {
+      "schema": "Member",
+      "description": "Team member directory"
+    }
+  }
+}

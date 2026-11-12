@@ -44,7 +44,7 @@ import { HomePage } from './components/HomePage';
 import { Footer } from './components/Footer';
 import { LegalModal } from './components/LegalModal';
 import { getTimeRemaining, CATEGORIES } from './utils';
-import { auth, db, signInWithGoogle, logout } from './lib/firebase';
+import { auth, db, signInWithGoogle, logout, handleFirestoreError, OperationType } from './lib/firebase';
 
 export default function App() {
   const [isDark, setIsDark] = useState(() => {
@@ -94,12 +94,16 @@ export default function App() {
       });
       setDecisions(data);
       setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'decisions');
     });
 
     const mQuery = query(collection(db, 'members'), orderBy('name', 'asc'));
     const unsubscribeMembers = onSnapshot(mQuery, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as TeamMember));
       setMembers(data);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'members');
     });
 
     return () => {
@@ -158,6 +162,19 @@ export default function App() {
     return decisions.find(d => d.id === selectedDecisionId) || null;
   }, [decisions, selectedDecisionId]);
 
+  const handleLogin = async () => {
+    try {
+      await signInWithGoogle();
+    } catch (error: any) {
+      if (error.code === 'auth/popup-closed-by-user') {
+        console.log('Login popup closed by user');
+        return;
+      }
+      addToast('Errore durante l\'accesso.', 'error');
+      console.error('Login error:', error);
+    }
+  };
+
   const statsSummary = useMemo(() => {
     const total = decisions.length;
     const activeCount = decisions.filter(d => getTimeRemaining(d.deadline).status !== 'expired').length;
@@ -182,6 +199,7 @@ export default function App() {
       addToast('Decisione pubblicata!', 'success');
     } catch (e) {
       addToast('Errore nella pubblicazione.', 'error');
+      handleFirestoreError(e, OperationType.CREATE, 'decisions');
     }
   };
 
@@ -222,6 +240,7 @@ export default function App() {
       addToast('Voto registrato!', 'success');
     } catch (e) {
       addToast('Errore nel voto.', 'error');
+      handleFirestoreError(e, OperationType.UPDATE, `decisions/${decisionId}`);
     }
   };
 
@@ -241,6 +260,7 @@ export default function App() {
       });
     } catch (e) {
       addToast('Errore nel commento.', 'error');
+      handleFirestoreError(e, OperationType.UPDATE, `decisions/${decisionId}`);
     }
   };
 
@@ -249,6 +269,7 @@ export default function App() {
       await addDoc(collection(db, 'members'), newMember);
     } catch (e) {
       addToast('Errore aggiunta membro.', 'error');
+      handleFirestoreError(e, OperationType.CREATE, 'members');
     }
   };
 
@@ -257,6 +278,7 @@ export default function App() {
       await deleteDoc(doc(db, 'members', id));
     } catch (e) {
       addToast('Errore eliminazione.', 'error');
+      handleFirestoreError(e, OperationType.DELETE, `members/${id}`);
     }
   };
 
@@ -265,6 +287,7 @@ export default function App() {
       await updateDoc(doc(db, 'members', id), { status });
     } catch (e) {
       addToast('Errore aggiornamento.', 'error');
+      handleFirestoreError(e, OperationType.UPDATE, `members/${id}`);
     }
   };
 
@@ -274,6 +297,7 @@ export default function App() {
       if (selectedDecisionId === id) setSelectedDecisionId(null);
     } catch (e) {
       addToast('Errore eliminazione.', 'error');
+      handleFirestoreError(e, OperationType.DELETE, `decisions/${id}`);
     }
   };
 
@@ -285,6 +309,7 @@ export default function App() {
       await updateDoc(doc(db, 'decisions', id), { deadline: newDeadline });
     } catch (e) {
       addToast('Errore proroga.', 'error');
+      handleFirestoreError(e, OperationType.UPDATE, `decisions/${id}`);
     }
   };
 
@@ -294,6 +319,7 @@ export default function App() {
       await updateDoc(doc(db, 'decisions', id), { deadline: pastDeadline });
     } catch (e) {
       addToast('Errore chiusura.', 'error');
+      handleFirestoreError(e, OperationType.UPDATE, `decisions/${id}`);
     }
   };
 
@@ -343,7 +369,7 @@ export default function App() {
     return (
       <div className={`min-h-screen ${isDark ? 'dark' : ''}`}>
         <ToastContainer toasts={toasts} removeToast={removeToast} />
-        <HomePage onLoginSuccess={signInWithGoogle} isDark={isDark} toggleDarkMode={() => setIsDark(!isDark)} />
+        <HomePage onLoginSuccess={handleLogin} isDark={isDark} toggleDarkMode={() => setIsDark(!isDark)} />
       </div>
     );
   }
