@@ -24,6 +24,7 @@
         "react": "^19.0.1",
         "react-dom": "^19.0.1",
         "recharts": "^3.10.1",
+        "tsx": "^4.23.15",
       },
       "devDependencies": {
         "@types/express": "^5.0.6",

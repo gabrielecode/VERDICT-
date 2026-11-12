@@ -28,7 +28,6 @@ interface CreationModalProps {
   onPublish: (newDecision: Decision) => void;
 }
 
-
 export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, onPublish }) => {
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState('');
@@ -36,15 +35,12 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
   const [category, setCategory] = useState('Design');
   const [decisionType, setDecisionType] = useState<DecisionType>('single');
   
-  // For options (Step 3)
   const [options, setOptions] = useState<string[]>(['', '']);
   
-  // For deadline and audience (Step 4)
   const [deadlineDate, setDeadlineDate] = useState('');
   const [deadlineTime, setDeadlineTime] = useState('18:00');
   const [audience, setAudience] = useState<DecisionAudience>('public');
 
-  // Attachments (Files and Photos)
   const [attachments, setAttachments] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -74,7 +70,6 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Initialize deadline date to tomorrow
   useEffect(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -84,7 +79,6 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
     setDeadlineDate(`${yyyy}-${mm}-${dd}`);
   }, []);
 
-  // Sync default options when decision type changes
   useEffect(() => {
     if (decisionType === 'yes_no') {
       setOptions(['Sì, favorevole', 'No, contrario']);
@@ -164,13 +158,13 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
     const formattedOptions: DecisionOption[] = options
       .filter(opt => opt.trim().length > 0)
       .map((text, index) => ({
-        id: `opt-${Date.now()}-${index}`,
+        id: index,
         text: text,
         votes: 0
       }));
 
     const newDecision: Decision = {
-      id: '', // Will be set by the server (SQL)
+      id: '',
       title: title.trim(),
       description: description.trim(),
       type: decisionType,
@@ -178,7 +172,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
       deadline: finalDeadline,
       audience: audience,
       creator: {
-        name: '', // Will be set in App.tsx
+        name: '',
         role: '',
         avatar: ''
       },
@@ -191,7 +185,6 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
 
     onPublish(newDecision);
     onClose();
-    // Reset state
     setStep(1);
     setTitle('');
     setDescription('');
@@ -208,7 +201,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs"
+        className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
       />
 
       <motion.div
@@ -276,9 +269,6 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                     placeholder="es. Quale logo preferisci per la startup?"
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-base md:text-xs font-medium placeholder-slate-400 transition"
                   />
-                  {title.length > 0 && title.length < 4 && (
-                    <p className="text-red-500 text-xs mt-1 font-mono">Il titolo deve contenere almeno 4 caratteri.</p>
-                  )}
                 </div>
 
                 <div>
@@ -288,12 +278,9 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                     value={description}
                     maxLength={500}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Fornisci dettagli sul contesto, file di riferimento, o criteri che il team dovrebbe considerare..."
+                    placeholder="Fornisci dettagli sul contesto..."
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-base md:text-xs font-normal placeholder-slate-400 transition resize-none"
                   />
-                  {description.length > 0 && description.length < 10 && (
-                    <p className="text-red-500 text-xs mt-1 font-mono">Descrivi meglio il contesto (almeno 10 caratteri).</p>
-                  )}
                 </div>
 
                 <div>
@@ -340,7 +327,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                     />
                   </div>
 
-                  {attachments.length > 0 ? (
+                  {attachments.length > 0 && (
                     <div className="grid grid-cols-3 gap-2.5 pt-1">
                       {attachments.map((att, idx) => (
                         <div key={idx} className="relative group rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-gray-50 dark:bg-gray-800 aspect-video flex items-center justify-center">
@@ -362,13 +349,6 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      className="border-2 border-dashed border-gray-200 dark:border-gray-700 hover:border-blue-400 rounded-2xl p-4 text-center cursor-pointer transition bg-gray-50/50 dark:bg-gray-800/50"
-                    >
-                      <p className="text-xs text-slate-400 font-medium">Trascina qui i file o clicca per caricare foto e documenti di supporto</p>
-                    </div>
                   )}
                 </div>
               </motion.div>
@@ -382,17 +362,12 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                 exit={{ opacity: 0, x: -10 }}
                 className="space-y-4"
               >
-                <div className="text-center max-w-md mx-auto mb-6">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">Seleziona il tipo di decisione</h3>
-                  <p className="text-slate-500 dark:text-gray-400 text-sm mt-1">Scegli come gli utenti dovranno esprimere il loro voto.</p>
-                </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   {[
-                    { id: 'single', label: 'Scelta Singola', icon: CheckSquare, desc: 'Gli utenti possono votare solo una opzione tra quelle inserite.' },
-                    { id: 'multiple', label: 'Scelta Multipla', icon: ListTodo, desc: 'Gli utenti possono scegliere più preferenze contemporaneamente.' },
-                    { id: 'yes_no', label: 'Sì o No (Bivio)', icon: HelpCircle, desc: 'Un semplice bivio decisionale per approvazioni o rifiuti rapidi.' },
-                    { id: 'rating', label: 'Valutazione a Stelle', icon: Star, desc: 'Gli utenti valutano l\'oggetto con un punteggio qualitativo da 1 a 5 stelle.' },
+                    { id: 'single', label: 'Scelta Singola', icon: CheckSquare, desc: 'Gli utenti possono votare solo una opzione.' },
+                    { id: 'multiple', label: 'Scelta Multipla', icon: ListTodo, desc: 'Gli utenti possono scegliere più preferenze.' },
+                    { id: 'yes_no', label: 'Sì o No (Bivio)', icon: HelpCircle, desc: 'Un semplice bivio decisionale.' },
+                    { id: 'rating', label: 'Valutazione a Stelle', icon: Star, desc: 'Valutazione da 1 a 5 stelle.' },
                   ].map((type) => (
                     <div
                       key={type.id}
@@ -407,7 +382,6 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                         <div className={`p-2.5 rounded-xl ${decisionType === type.id ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-slate-500 dark:text-gray-400'}`}>
                           <type.icon className="w-5 h-5" />
                         </div>
-                        {decisionType === type.id && <CheckCircle2 className="w-5 h-5 text-blue-600" />}
                       </div>
                       <div>
                         <h4 className="font-bold text-gray-900 dark:text-white text-sm">{type.label}</h4>
@@ -427,82 +401,47 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                 exit={{ opacity: 0, x: -10 }}
                 className="space-y-6"
               >
-                <div>
-                  <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">Configura le opzioni di voto</h3>
-                  <p className="text-slate-500 dark:text-gray-400 text-xs mb-4">Compila le scelte disponibili per gli utenti del tuo easy decision.</p>
-                </div>
-
-                {decisionType === 'yes_no' && (
-                  <div className="space-y-4 p-5 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
-                    <p className="text-xs text-slate-500 dark:text-gray-400 font-medium">Per i bivi decisionali (Sì/No), le opzioni sono preconfigurate ma puoi modificarle:</p>
-                    <div className="space-y-3">
-                      <input
-                        type="text"
-                        value={options[0]}
-                        maxLength={80}
-                        onChange={(e) => handleOptionChange(0, e.target.value)}
-                        className="w-full bg-white dark:bg-gray-900 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-base md:text-xs font-semibold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Opzione positiva"
-                      />
-                      <input
-                        type="text"
-                        value={options[1]}
-                        maxLength={80}
-                        onChange={(e) => handleOptionChange(1, e.target.value)}
-                        className="w-full bg-white dark:bg-gray-900 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-base md:text-xs font-semibold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Opzione negativa"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {decisionType === 'rating' && (
-                  <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 text-center space-y-3">
-                    <div className="flex justify-center gap-1.5 text-amber-400">
-                      {[1,2,3,4,5].map(s => <Star key={s} className="w-8 h-8 fill-amber-400 text-amber-400" />)}
-                    </div>
-                    <h4 className="font-bold text-gray-900 dark:text-white text-sm">Pronto per il Rating qualitativo</h4>
-                    <p className="text-xs text-slate-500 dark:text-gray-400 max-w-sm mx-auto">
-                      Gli utenti vedranno una scala interattiva a 5 stelle. I risultati verranno calcolati come media pesata.
-                    </p>
-                  </div>
-                )}
-
-                {(decisionType === 'single' || decisionType === 'multiple') && (
+                {(decisionType === 'single' || decisionType === 'multiple' || decisionType === 'yes_no') && (
                   <div className="space-y-3">
                     {options.map((option, idx) => (
                       <div key={idx} className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-400 w-5">#{idx + 1}</span>
                         <input
                           type="text"
                           value={option}
                           maxLength={80}
                           onChange={(e) => handleOptionChange(idx, e.target.value)}
-                          placeholder={`es. Opzione alternativa ${idx + 1}`}
+                          placeholder={`Opzione ${idx + 1}`}
                           className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-base md:text-xs text-gray-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                         />
-                        {options.length > 2 && (
+                        {options.length > 2 && decisionType !== 'yes_no' && (
                           <button
                             type="button"
                             onClick={() => handleRemoveOption(idx)}
-                            className="p-2 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition cursor-pointer"
+                            className="p-2 rounded-lg text-slate-400 hover:text-rose-500 transition cursor-pointer"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
                         )}
                       </div>
                     ))}
-
-                    {options.length < 10 && (
+                    {options.length < 10 && decisionType !== 'yes_no' && (
                       <button
                         type="button"
                         onClick={handleAddOption}
-                        className="mt-2 flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100/70 dark:hover:bg-blue-900/50 px-4 py-2 rounded-xl transition cursor-pointer"
+                        className="mt-2 flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-4 py-2 rounded-xl transition cursor-pointer"
                       >
                         <Plus className="w-4 h-4" />
-                        Aggiungi un'opzione
+                        Aggiungi opzione
                       </button>
                     )}
+                  </div>
+                )}
+                {decisionType === 'rating' && (
+                  <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 text-center space-y-3">
+                    <div className="flex justify-center gap-1.5 text-amber-400">
+                      {[1,2,3,4,5].map(s => <Star key={s} className="w-8 h-8 fill-amber-400" />)}
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-gray-400">Rating qualitativo a 5 stelle.</p>
                   </div>
                 )}
               </motion.div>
@@ -519,53 +458,33 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                 <div>
                   <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                     <Calendar className="w-4 h-4 text-blue-600" />
-                    Seleziona Data e Ora di Scadenza
+                    Scadenza
                   </label>
-                  <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <input
                       type="date"
                       value={deadlineDate}
                       onChange={(e) => setDeadlineDate(e.target.value)}
-                      min={new Date().toISOString().slice(0, 10)}
-                      className="px-4 py-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-base md:text-xs font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="px-4 py-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-base md:text-xs text-gray-900 dark:text-white"
                     />
                     <input
                       type="time"
                       value={deadlineTime}
                       onChange={(e) => setDeadlineTime(e.target.value)}
-                      className="px-4 py-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-base md:text-xs font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="px-4 py-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-base md:text-xs text-gray-900 dark:text-white"
                     />
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 pt-1.5">
-                    <span className="text-xs text-slate-400 dark:text-gray-500 self-center font-medium mr-1">Preimposta:</span>
-                    {[
-                      { h: 1, label: '+1 Ora' },
-                      { h: 24, label: '+24 Ore' },
-                      { h: 72, label: '+3 Giorni' },
-                      { h: 168, label: '+1 Settimana' }
-                    ].map(q => (
-                      <button
-                        key={q.h}
-                        type="button"
-                        onClick={() => setQuickDeadline(q.h)}
-                        className="text-xs bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 text-slate-600 dark:text-gray-300 px-3 py-1.5 rounded-lg font-medium transition cursor-pointer"
-                      >
-                        {q.label}
-                      </button>
-                    ))}
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-                    Chi può partecipare? (Visibilità)
+                    Visibilità
                   </label>
                   <div className="space-y-2">
                     {[
-                      { id: 'public', label: 'Pubblico', icon: Globe, desc: 'Chiunque abbia il link condivisibile può visualizzare e votare.' },
-                      { id: 'restricted', label: 'Membri del Team (Riservato)', icon: Shield, desc: 'Limitato ai soli utenti loggati.' },
-                      { id: 'private', label: 'Privato', icon: Lock, desc: 'Solo i membri specificati che ricevono un invito diretto.' },
+                      { id: 'public', label: 'Pubblico', icon: Globe },
+                      { id: 'restricted', label: 'Membri Team', icon: Shield },
+                      { id: 'private', label: 'Privato', icon: Lock },
                     ].map((aud) => (
                       <div
                         key={aud.id}
@@ -573,17 +492,12 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                         className={`p-3.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${
                           audience === aud.id
                             ? 'border-blue-600 bg-blue-50/25 dark:bg-blue-900/20'
-                            : 'border-gray-150 dark:border-gray-800 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-700'
+                            : 'border-gray-150 dark:border-gray-800 bg-white dark:bg-gray-800'
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`p-1.5 rounded-lg ${audience === aud.id ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-slate-500 dark:text-gray-400'}`}>
-                            <aud.icon className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-gray-900 dark:text-white text-xs">{aud.label}</h4>
-                            <p className="text-xs text-slate-400 dark:text-gray-500 mt-0.5">{aud.desc}</p>
-                          </div>
+                          <aud.icon className="w-4 h-4" />
+                          <h4 className="font-bold text-gray-900 dark:text-white text-xs">{aud.label}</h4>
                         </div>
                         {audience === aud.id && <CheckCircle2 className="w-4 h-4 text-blue-600" />}
                       </div>
@@ -601,54 +515,11 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                 exit={{ opacity: 0, x: -10 }}
                 className="space-y-6"
               >
-                <div className="text-center max-w-sm mx-auto mb-2">
-                  <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 mx-auto mb-3 border border-blue-100 dark:border-blue-800">
-                    <Eye className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">Pronto per il lancio!</h3>
-                  <p className="text-slate-500 dark:text-gray-400 text-xs mt-1">
-                    Controlla i dettagli prima di pubblicare sul Cloud.
-                  </p>
-                </div>
-
-                <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-5 border border-gray-200 dark:border-gray-700 space-y-4 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-blue-600 dark:text-blue-400 px-2.5 py-0.5 bg-blue-50 dark:bg-blue-900/30 rounded-md border border-blue-100 dark:border-blue-800">
-                      {category}
-                    </span>
-                    <span className="text-xs text-slate-400 dark:text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1">
-                      {audience === 'public' ? <Globe className="w-3 h-3 text-emerald-500" /> : <Lock className="w-3 h-3 text-amber-500" />}
-                      {audience === 'public' ? 'Pubblico' : audience === 'restricted' ? 'Riservato' : 'Privato'}
-                    </span>
-                  </div>
-
-                  <div>
-                    <h4 className="font-bold text-gray-900 dark:text-white text-base leading-snug">{title || 'Senza titolo'}</h4>
-                    <p className="text-slate-500 dark:text-gray-400 text-xs mt-1 font-normal line-clamp-3">{description || 'Nessuna descrizione fornita.'}</p>
-                  </div>
-
-                  <div className="space-y-1.5 pt-2">
-                    <span className="text-xs font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider block">Opzioni:</span>
-                    {decisionType === 'rating' ? (
-                      <div className="flex gap-1 text-amber-400 py-1">
-                        {[1, 2, 3, 4, 5].map(s => <Star key={s} className="w-4 h-4 fill-amber-400" />)}
-                        <span className="text-xs text-slate-500 dark:text-gray-400 font-medium ml-1">Scala di valutazione</span>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 gap-1.5">
-                        {options.filter(o => o.trim().length > 0).slice(0, 3).map((opt, i) => (
-                          <div key={i} className="flex items-center gap-2 text-xs text-slate-600 dark:text-gray-300 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 px-3 py-1.5 rounded-lg font-medium">
-                            <span className="text-blue-600 dark:text-blue-400 text-xs font-extrabold">{i+1}.</span>
-                            <span className="truncate">{opt}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="border-t border-gray-150 dark:border-gray-700 pt-3 flex items-center justify-between text-xs text-slate-500 dark:text-gray-400 font-medium">
-                    <span>Scadenza: {deadlineDate ? `${deadlineDate} alle ${deadlineTime}` : 'Non definita'}</span>
-                    <span className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-md font-bold uppercase text-xs">Stato: Attivo</span>
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-5 border border-gray-200 dark:border-gray-700 space-y-4">
+                  <h4 className="font-bold text-gray-900 dark:text-white text-base">{title || 'Senza titolo'}</h4>
+                  <p className="text-slate-500 dark:text-gray-400 text-xs">{description}</p>
+                  <div className="text-xs text-slate-500 dark:text-gray-400">
+                    Scadenza: {deadlineDate} {deadlineTime}
                   </div>
                 </div>
               </motion.div>
@@ -661,11 +532,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
             type="button"
             onClick={handlePrev}
             disabled={step === 1}
-            className={`flex items-center gap-1.5 text-xs font-semibold px-4 py-2.5 rounded-xl transition cursor-pointer ${
-              step === 1
-                ? 'text-slate-300 dark:text-gray-700 cursor-not-allowed'
-                : 'text-slate-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-            }`}
+            className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2.5 rounded-xl disabled:opacity-30 cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
             Indietro
@@ -676,11 +543,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
               type="button"
               onClick={handleNext}
               disabled={!isStepValid()}
-              className={`flex items-center gap-1 text-xs font-bold px-5 py-2.5 rounded-xl transition cursor-pointer ${
-                isStepValid()
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
-                  : 'bg-gray-100 dark:bg-gray-800 text-slate-400 dark:text-gray-600 cursor-not-allowed'
-              }`}
+              className="flex items-center gap-1 text-xs font-bold px-5 py-2.5 rounded-xl bg-blue-600 text-white disabled:opacity-50 cursor-pointer"
             >
               Avanti
               <ChevronRight className="w-4 h-4" />
@@ -689,9 +552,9 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
             <button
               type="button"
               onClick={handleConfirmPublish}
-              className="flex items-center gap-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl transition cursor-pointer shadow-md"
+              className="flex items-center gap-1.5 text-xs font-bold bg-blue-600 text-white px-6 py-2.5 rounded-xl cursor-pointer"
             >
-              Pubblica Decisione
+              Pubblica
               <CheckCircle2 className="w-4.5 h-4.5" />
             </button>
           )}

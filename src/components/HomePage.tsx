@@ -1,18 +1,14 @@
 import React, { useEffect } from 'react';
 import { 
   Vote, 
-  Sparkles, 
   ChevronDown, 
-  Star, 
   Users, 
   LogIn,
-  Check,
-  Calendar,
-  Download,
   ArrowRight,
   ShieldCheck,
   LayoutDashboard,
-  MessageSquare
+  Sun,
+  Moon
 } from 'lucide-react';
 import { Footer } from './Footer';
 import { LegalModal } from './LegalModal';
@@ -52,7 +48,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
     },
     {
       q: "Dove vengono salvati i dati?",
-      a: "Tutti i dati sono archiviati in modo sicuro su un database relazionale Postgres (Cloud SQL), garantendo la persistenza e l'integrità dei dati per il tuo team."
+      a: "Tutti i dati sono archiviati in modo sicuro su Firebase Firestore, garantendo la persistenza e l'integrità dei dati per il tuo team."
     }
   ];
 
@@ -66,7 +62,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
             </div>
             <div>
               <span className="font-display font-bold text-xl tracking-tight block">easy decision</span>
-              <span className="text-xs font-bold text-blue-600 uppercase tracking-widest block">SQL Cloud</span>
+              <span className="text-xs font-bold text-blue-600 uppercase tracking-widest block">Cloud</span>
             </div>
           </div>
 
@@ -76,7 +72,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
               className={`p-2 rounded-xl border transition ${isDark ? 'border-gray-800 bg-gray-900 text-amber-400 hover:bg-gray-800' : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'}`}
               aria-label="Cambia Tema"
             >
-              {isDark ? '☀️' : '🌙'}
+              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
             <button
               onClick={onLoginSuccess}
@@ -153,7 +149,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
                 </button>
               </div>
             </div>
-            {/* Background decorative elements */}
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-600/10 blur-3xl rounded-full" />
             <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-emerald-600/10 blur-3xl rounded-full" />
           </div>

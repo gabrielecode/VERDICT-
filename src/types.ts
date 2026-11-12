@@ -37,7 +37,7 @@ export type DecisionType = 'single' | 'multiple' | 'yes_no' | 'rating';
 export type DecisionAudience = 'public' | 'private' | 'restricted';
 
 export interface Decision {
-  id: string | number;
+  id: string;
   title: string;
   description: string;
   type: DecisionType;
@@ -46,7 +46,7 @@ export interface Decision {
   deadline: string;
   audience: DecisionAudience;
   creator: Creator;
-  votedOptionIds?: (string | number)[];
+  votedOptionIds?: string[];
   ratingValue?: number;
   participants: Participant[];
   comments: Comment[];
@@ -62,7 +62,7 @@ export interface AuditLog {
 }
 
 export interface TeamMember {
-  id: string | number;
+  id: string;
   name: string;
   surname: string;
   department: string;

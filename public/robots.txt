@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://IL-TUO-DOMINIO/sitemap.xml
+Sitemap: https://easydecision.ai.studio/sitemap.xml

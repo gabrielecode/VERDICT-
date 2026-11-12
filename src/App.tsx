@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Vote,
@@ -7,23 +7,34 @@ import {
   SlidersHorizontal,
   ChevronRight,
   Sparkles,
-  RefreshCw,
-  HelpCircle,
-  TrendingUp,
   Inbox,
   Users,
   Archive,
   LayoutDashboard,
-  X,
-  Check,
-  ShieldCheck,
-  Menu,
   Sun,
   Moon,
   LogOut,
-  Loader2
+  Loader2,
+  Menu,
+  ShieldCheck,
+  X
 } from 'lucide-react';
-import { Decision, Comment, TeamMember, Toast, ToastType, DecisionOption } from './types';
+import { 
+  collection, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  onSnapshot, 
+  query, 
+  orderBy,
+  serverTimestamp,
+  increment,
+  arrayUnion,
+  getDocs
+} from 'firebase/firestore';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { Decision, TeamMember, Toast, ToastType, DecisionOption } from './types';
 import { DecisionCard } from './components/DecisionCard';
 import { CreationModal } from './components/CreationModal';
 import { DecisionDetail } from './components/DecisionDetail';
@@ -33,8 +44,7 @@ import { HomePage } from './components/HomePage';
 import { Footer } from './components/Footer';
 import { LegalModal } from './components/LegalModal';
 import { getTimeRemaining, CATEGORIES } from './utils';
-import { auth, signInWithGoogle, logout } from './lib/firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { auth, db, signInWithGoogle, logout } from './lib/firebase';
 
 export default function App() {
   const [isDark, setIsDark] = useState(() => {
@@ -46,7 +56,6 @@ export default function App() {
     document.documentElement.classList.toggle('dark', isDark);
   }, [isDark]);
   
-  // Auth State
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
@@ -57,90 +66,51 @@ export default function App() {
     });
   }, []);
 
-  // API Helper
-  const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-    if (!auth.currentUser) throw new Error('Not authenticated');
-    const token = await auth.currentUser.getIdToken();
-    const res = await fetch(url, {
-      ...options,
-      headers: {
-        ...options.headers,
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-      throw new Error(err.error || 'Request failed');
-    }
-    if (res.status === 204) return null;
-    return res.json();
-  };
-
-  // Data States
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [members, setMembers] = useState<TeamMember[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const fetchData = async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const [decisionsData, membersData] = await Promise.all([
-        fetchWithAuth('/api/decisions'),
-        fetchWithAuth('/api/members'),
-      ]);
-
-      // Map SQL data to Frontend types
-      const mappedDecisions = decisionsData.map((d: any) => {
-        const userVote = d.votes.find((v: any) => v.userId === user.uid);
-        
-        // Aggregate votes for options
-        const optionsWithVotes = d.options.map((opt: any) => ({
-          ...opt,
-          votes: d.votes.filter((v: any) => v.optionIds?.includes(opt.id)).length
-        }));
-
-        // Handle rating votes specially if needed
-        if (d.type === 'rating') {
-          // In rating type, votes are stored in ratingValue
-          // We can map rating 1-5 to options if they exist
-        }
-
-        return {
-          ...d,
-          creator: {
-            name: d.creator.displayName || 'Utente',
-            avatar: d.creator.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&q=80',
-            role: 'Decision Maker',
-            uid: d.creator.uid
-          },
-          options: optionsWithVotes,
-          votedOptionIds: userVote?.optionIds || [],
-          ratingValue: userVote?.ratingValue,
-          participants: [], // Could be derived from unique voters
-          comments: d.comments || [],
-        };
-      });
-
-      setDecisions(mappedDecisions);
-      setMembers(membersData);
-    } catch (e) {
-      console.error(e);
-      addToast('Errore nel caricamento dei dati.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchData();
+    if (!user) {
+      setDecisions([]);
+      setMembers([]);
+      setLoading(false);
+      return;
+    }
+
+    const dQuery = query(collection(db, 'decisions'), orderBy('createdAt', 'desc'));
+    const unsubscribeDecisions = onSnapshot(dQuery, (snapshot) => {
+      const data = snapshot.docs.map(doc => {
+        const d = doc.data();
+        const userVote = d.votes?.find((v: any) => v.userId === user.uid);
+        
+        return {
+          ...d,
+          id: doc.id,
+          votedOptionIds: userVote?.optionIds || [],
+          ratingValue: userVote?.ratingValue,
+          comments: d.comments || [],
+        } as Decision;
+      });
+      setDecisions(data);
+      setLoading(false);
+    });
+
+    const mQuery = query(collection(db, 'members'), orderBy('name', 'asc'));
+    const unsubscribeMembers = onSnapshot(mQuery, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as TeamMember));
+      setMembers(data);
+    });
+
+    return () => {
+      unsubscribeDecisions();
+      unsubscribeMembers();
+    };
   }, [user]);
 
-  // View States
-  const [selectedDecisionId, setSelectedDecisionId] = useState<string | number | null>(null);
+  const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
 
-  const openDecision = (id: string | number) => {
+  const openDecision = (id: string) => {
     window.history.pushState({ decisionId: id }, '');
     setSelectedDecisionId(id);
   };
@@ -155,15 +125,12 @@ export default function App() {
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [showTeamModal, setShowTeamModal] = useState(false);
-
-  // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('Tutte');
   const [statusFilter, setStatusFilter] = useState<'tutti' | 'attivi' | 'chiusura' | 'conclusi'>('tutti');
   const [activeMenuTab, setActiveMenuTab] = useState<'dashboard' | 'archived' | 'admin'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Legal Modal State
   const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: 'privacy' | 'cookie' }>({
     isOpen: false,
     type: 'privacy'
@@ -173,7 +140,6 @@ export default function App() {
     setLegalModal({ isOpen: true, type });
   };
 
-  // Toast
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const addToast = (message: string, type: ToastType) => {
@@ -189,7 +155,7 @@ export default function App() {
   };
 
   const activeDecision = useMemo(() => {
-    return decisions.find(d => String(d.id) === String(selectedDecisionId)) || null;
+    return decisions.find(d => d.id === selectedDecisionId) || null;
   }, [decisions, selectedDecisionId]);
 
   const statsSummary = useMemo(() => {
@@ -199,40 +165,80 @@ export default function App() {
     return { total, activeCount, totalVotes };
   }, [decisions]);
 
-  // Handlers
-  const handlePublishDecision = async (newDecision: Decision) => {
+  const handlePublishDecision = async (newDecision: Omit<Decision, 'id'>) => {
+    if (!user) return;
     try {
-      await fetchWithAuth('/api/decisions', {
-        method: 'POST',
-        body: JSON.stringify(newDecision),
+      await addDoc(collection(db, 'decisions'), {
+        ...newDecision,
+        creator: {
+          uid: user.uid,
+          name: user.displayName || 'Utente',
+          avatar: user.photoURL || '',
+          role: 'Decision Maker'
+        },
+        createdAt: new Date().toISOString(),
+        votes: []
       });
       addToast('Decisione pubblicata!', 'success');
-      fetchData();
     } catch (e) {
       addToast('Errore nella pubblicazione.', 'error');
     }
   };
 
-  const handleVote = async (decisionId: string | number, optionIds: (string | number)[], ratingValue?: number) => {
+  const handleVote = async (decisionId: string, optionIds: string[], ratingValue?: number) => {
+    if (!user) return;
     try {
-      await fetchWithAuth(`/api/decisions/${decisionId}/vote`, {
-        method: 'POST',
-        body: JSON.stringify({ optionIds, ratingValue }),
+      const dRef = doc(db, 'decisions', decisionId);
+      const d = decisions.find(dec => dec.id === decisionId);
+      if (!d) return;
+
+      const newVotes = [...(d as any).votes || []];
+      const existingVoteIdx = newVotes.findIndex((v: any) => v.userId === user.uid);
+
+      if (existingVoteIdx > -1) {
+        addToast('Hai già votato questa proposta.', 'warning');
+        return;
+      }
+
+      newVotes.push({
+        userId: user.uid,
+        optionIds,
+        ratingValue,
+        timestamp: new Date().toISOString()
       });
+
+      const updatedOptions = d.options.map(opt => {
+        if (optionIds.includes(opt.id.toString())) {
+          return { ...opt, votes: opt.votes + 1 };
+        }
+        return opt;
+      });
+
+      await updateDoc(dRef, {
+        votes: newVotes,
+        options: updatedOptions
+      });
+
       addToast('Voto registrato!', 'success');
-      fetchData();
-    } catch (e: any) {
-      addToast(e.message, 'error');
+    } catch (e) {
+      addToast('Errore nel voto.', 'error');
     }
   };
 
-  const handleAddComment = async (decisionId: string | number, text: string) => {
+  const handleAddComment = async (decisionId: string, text: string) => {
+    if (!user) return;
     try {
-      await fetchWithAuth(`/api/decisions/${decisionId}/comments`, {
-        method: 'POST',
-        body: JSON.stringify({ text }),
+      const dRef = doc(db, 'decisions', decisionId);
+      const newComment = {
+        id: Date.now().toString(),
+        author: user.displayName || 'Utente',
+        avatar: user.photoURL || '',
+        text,
+        timestamp: new Date().toISOString()
+      };
+      await updateDoc(dRef, {
+        comments: arrayUnion(newComment)
       });
-      fetchData();
     } catch (e) {
       addToast('Errore nel commento.', 'error');
     }
@@ -240,70 +246,52 @@ export default function App() {
 
   const handleAddMember = async (newMember: Omit<TeamMember, 'id'>) => {
     try {
-      await fetchWithAuth('/api/members', {
-        method: 'POST',
-        body: JSON.stringify(newMember),
-      });
-      fetchData();
+      await addDoc(collection(db, 'members'), newMember);
     } catch (e) {
       addToast('Errore aggiunta membro.', 'error');
     }
   };
 
-  const handleDeleteMember = async (id: string | number) => {
+  const handleDeleteMember = async (id: string) => {
     try {
-      await fetchWithAuth(`/api/members/${id}`, { method: 'DELETE' });
-      fetchData();
+      await deleteDoc(doc(db, 'members', id));
     } catch (e) {
       addToast('Errore eliminazione.', 'error');
     }
   };
 
-  const handleUpdateMemberStatus = async (id: string | number, status: string) => {
+  const handleUpdateMemberStatus = async (id: string, status: string) => {
     try {
-      await fetchWithAuth(`/api/members/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status }),
-      });
-      fetchData();
+      await updateDoc(doc(db, 'members', id), { status });
     } catch (e) {
       addToast('Errore aggiornamento.', 'error');
     }
   };
 
-  const handleDeleteDecision = async (id: string | number) => {
+  const handleDeleteDecision = async (id: string) => {
     try {
-      await fetchWithAuth(`/api/decisions/${id}`, { method: 'DELETE' });
+      await deleteDoc(doc(db, 'decisions', id));
       if (selectedDecisionId === id) setSelectedDecisionId(null);
-      fetchData();
     } catch (e) {
       addToast('Errore eliminazione.', 'error');
     }
   };
 
-  const handleExtendDecisionDeadline = async (id: string | number, hours: number) => {
+  const handleExtendDecisionDeadline = async (id: string, hours: number) => {
     const decision = decisions.find(d => d.id === id);
     if (!decision) return;
     try {
       const newDeadline = new Date(Math.max(Date.now(), new Date(decision.deadline).getTime()) + hours * 3600000).toISOString();
-      await fetchWithAuth(`/api/decisions/${id}/extend`, {
-        method: 'PATCH',
-        body: JSON.stringify({ deadline: newDeadline }),
-      });
-      fetchData();
+      await updateDoc(doc(db, 'decisions', id), { deadline: newDeadline });
     } catch (e) {
       addToast('Errore proroga.', 'error');
     }
   };
 
-  const handleExpireDecisionImmediately = async (id: string | number) => {
+  const handleExpireDecisionImmediately = async (id: string) => {
     try {
       const pastDeadline = new Date(Date.now() - 1000).toISOString();
-      await fetchWithAuth(`/api/decisions/${id}/extend`, {
-        method: 'PATCH',
-        body: JSON.stringify({ deadline: pastDeadline }),
-      });
-      fetchData();
+      await updateDoc(doc(db, 'decisions', id), { deadline: pastDeadline });
     } catch (e) {
       addToast('Errore chiusura.', 'error');
     }
@@ -377,7 +365,7 @@ export default function App() {
                 </div>
                 <div>
                   <span className="font-display font-bold text-lg text-gray-950 dark:text-white tracking-tight block">easy decision</span>
-                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mt-[-2px] block">SQL Cloud</span>
+                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mt-[-2px] block">Cloud</span>
                 </div>
               </div>
             </div>
@@ -480,12 +468,6 @@ export default function App() {
               </div>
               <span className="font-display font-bold text-base text-gray-950 dark:text-white tracking-tight">easy decision</span>
             </div>
-
-            <div className="hidden md:flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-              <span>Spazio Lavoro</span>
-              <span aria-hidden="true" className="opacity-40">·</span>
-              <span className="text-slate-900 dark:text-slate-200">Team Alpha</span>
-            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -495,16 +477,9 @@ export default function App() {
             >
               {isDark ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5" />}
             </button>
-
-            <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 py-1.5">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-              Sincronizzato
-            </span>
-
             <button
               onClick={logout}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-xl text-xs font-semibold transition border border-red-200 dark:border-red-900 cursor-pointer"
-              title="Esci dalla sessione"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Esci</span>
@@ -562,35 +537,13 @@ export default function App() {
                   className="space-y-8"
                 >
                   <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-8 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 transform translate-x-12 -translate-y-12 opacity-5 pointer-events-none">
-                      <Vote className="w-64 h-64 text-blue-600" />
-                    </div>
-
                     <div className="max-w-2xl space-y-6">
                       <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em]">
                         Collaborazione Strategica
                       </div>
-                      <h1 className="text-3xl lg:text-4xl font-semibold font-display tracking-tight leading-[1.1] text-slate-950 dark:text-white text-wrap-balance">
+                      <h1 className="text-3xl lg:text-4xl font-semibold font-display tracking-tight leading-[1.1] text-slate-950 dark:text-white">
                         Prendi decisioni migliori,<br />più velocemente.
                       </h1>
-                      <p className="text-slate-500 dark:text-slate-400 text-sm font-normal leading-relaxed max-w-lg">
-                        Crea proposte strutturate per il tuo team. Raccogli voti, avvia discussioni e giungi a verdetti trasparenti in tempo reale.
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-6 pt-6 border-t border-gray-150 dark:border-gray-800 mt-8 max-w-sm">
-                      <div>
-                        <span className="text-xl font-black text-gray-900 dark:text-white block leading-tight">{statsSummary.total}</span>
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Proposte totali</span>
-                      </div>
-                      <div>
-                        <span className="text-xl font-black text-blue-600 block leading-tight">{statsSummary.activeCount}</span>
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Attive ora</span>
-                      </div>
-                      <div>
-                        <span className="text-xl font-black text-emerald-600 block leading-tight">{statsSummary.totalVotes}</span>
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Voti espressi</span>
-                      </div>
                     </div>
                   </div>
 
@@ -601,12 +554,12 @@ export default function App() {
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Cerca decisioni per titolo..."
-                        className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl py-2 pl-9 pr-4 text-base md:text-xs font-medium text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-950 focus:border-transparent transition"
+                        placeholder="Cerca decisioni..."
+                        className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl py-2 pl-9 pr-4 text-base md:text-xs font-medium text-gray-800 dark:text-gray-100 focus:outline-none transition"
                       />
                     </div>
 
-                    <div className="flex flex-wrap gap-1 w-full lg:w-auto justify-start lg:justify-center">
+                    <div className="flex flex-wrap gap-1">
                       {['Tutte', ...CATEGORIES].map((cat) => (
                         <button
                           key={cat}
@@ -614,79 +567,23 @@ export default function App() {
                           className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition cursor-pointer ${
                             activeCategory === cat
                               ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-sm'
-                              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                              : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
                           }`}
                         >
                           {cat}
                         </button>
                       ))}
                     </div>
-
-                    {activeMenuTab !== 'archived' && (
-                      <div className="flex items-center gap-1.5 shrink-0 bg-gray-50 dark:bg-gray-800 p-1 rounded-xl border border-gray-200 dark:border-gray-700 w-full lg:w-auto">
-                        <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400 ml-2" />
-                        <select
-                          value={statusFilter}
-                          onChange={(e) => setStatusFilter(e.target.value as any)}
-                          className="bg-transparent text-xs font-bold text-gray-600 dark:text-gray-300 focus:outline-none pr-3 cursor-pointer py-1 w-full lg:w-auto"
-                        >
-                          <option value="tutti">Tutti gli stati</option>
-                          <option value="attivi">Attivi</option>
-                          <option value="chiusura">In scadenza</option>
-                          <option value="conclusi">Conclusi</option>
-                        </select>
-                      </div>
-                    )}
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-base font-extrabold text-gray-950 dark:text-white font-display tracking-tight flex items-center gap-2">
-                        <TrendingUp className="w-4 h-4 text-blue-600" />
-                        {activeMenuTab === 'archived' ? 'Archivio Sondaggi Conclusi' : 'Feed delle Decisioni'}
-                      </h2>
-                      <span className="text-xs text-gray-400 font-medium">
-                        Risultati: {filteredDecisions.length} di {decisions.length}
-                      </span>
-                    </div>
-
-                    {filteredDecisions.length === 0 ? (
-                      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-16 text-center max-w-md mx-auto space-y-4 shadow-sm">
-                        <div className="w-14 h-14 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-400 mx-auto">
-                          <Inbox className="w-7 h-7" />
-                        </div>
-                        <div>
-                          <h3 className="text-base font-bold text-gray-950 dark:text-white">Nessuna Decisione trovata</h3>
-                          <p className="text-gray-500 dark:text-gray-400 text-xs mt-1 leading-relaxed">
-                            Non ci sono decisioni corrispondenti ai parametri inseriti. Prova a reimpostare la ricerca o creane una nuova.
-                          </p>
-                        </div>
-                        <div className="flex items-center justify-center gap-3 pt-2">
-                          <button
-                            onClick={handleResetFilters}
-                            className="text-xs font-bold text-slate-600 dark:text-slate-400 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 px-4 py-2 rounded-xl transition cursor-pointer"
-                          >
-                            Azzera filtri
-                          </button>
-                          <button
-                            onClick={() => setIsCreateModalOpen(true)}
-                            className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl transition cursor-pointer shadow-sm"
-                          >
-                            Crea Proposta
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {filteredDecisions.map((decision) => (
-                          <DecisionCard
-                            key={decision.id}
-                            decision={decision}
-                            onClick={() => openDecision(decision.id)}
-                          />
-                        ))}
-                      </div>
-                    )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {filteredDecisions.map((decision) => (
+                      <DecisionCard
+                        key={decision.id}
+                        decision={decision}
+                        onClick={() => openDecision(decision.id)}
+                      />
+                    ))}
                   </div>
                 </motion.div>
               )}
@@ -726,71 +623,37 @@ export default function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowTeamModal(false)}
-              className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs"
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
             />
             
             <motion.div
               initial={{ opacity: 0, scale: 0.97, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.97, y: 10 }}
-              className="bg-white dark:bg-gray-900 w-full max-w-md rounded-3xl shadow-xl relative overflow-hidden flex flex-col z-10 border border-gray-200 dark:border-gray-800"
+              className="bg-white dark:bg-gray-900 w-full max-w-md rounded-3xl shadow-xl relative z-10 border border-gray-200 dark:border-gray-800"
             >
-              <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50 dark:bg-gray-950">
-                <div>
-                  <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">Spazio di lavoro</span>
-                  <h2 className="text-lg font-bold text-gray-950 dark:text-white font-display">Membri del Team</h2>
-                </div>
-                <button
-                  onClick={() => setShowTeamModal(false)}
-                  className="p-1.5 rounded-full hover:bg-gray-150 dark:hover:bg-gray-800 text-slate-400 hover:text-slate-600 transition cursor-pointer"
-                >
+              <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-gray-950 dark:text-white font-display">Membri del Team</h2>
+                <button onClick={() => setShowTeamModal(false)} className="p-1.5 text-slate-400 hover:text-slate-600 transition cursor-pointer">
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               <div className="p-6 space-y-4">
-                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-normal">
-                  Questi sono i membri attivi registrati in questo spazio easy decision. Ricevono notifiche push per ogni nuova proposta pubblicata.
-                </p>
-                
-                <div className="space-y-3 pt-2">
-                  {members.map((member) => (
-                    <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={member.avatar}
-                          alt={member.name}
-                          className="w-9 h-9 rounded-full object-cover border border-white dark:border-gray-900 shadow-xs"
-                          referrerPolicy="no-referrer"
-                        />
-                        <div>
-                          <p className="text-xs font-bold text-gray-800 dark:text-gray-100 leading-tight">{member.name}</p>
-                          <p className="text-xs text-gray-400 font-medium mt-0.5">{member.role}</p>
-                        </div>
+                {members.map((member) => (
+                  <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <img src={member.avatar} alt={member.name} className="w-9 h-9 rounded-full object-cover" />
+                      <div>
+                        <p className="text-xs font-bold text-gray-800 dark:text-gray-100">{member.name}</p>
+                        <p className="text-xs text-gray-400">{member.role}</p>
                       </div>
-
-                      <span className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-                        member.status === 'Attiva' || member.status === 'Attivo' || member.status === 'Disponibile'
-                          ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30'
-                          : member.status === 'In riunione'
-                          ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/30'
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-600'
-                      }`}>
-                        {member.status}
-                      </span>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="px-6 py-4 bg-gray-50 dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowTeamModal(false)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition cursor-pointer shadow-sm shadow-blue-100 dark:shadow-none"
-                >
-                  Chiudi
-                </button>
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400">
+                      {member.status}
+                    </span>
+                  </div>
+                ))}
               </div>
             </motion.div>
           </div>
@@ -803,19 +666,19 @@ export default function App() {
           className={`flex flex-col items-center justify-center min-h-14 gap-1 ${activeMenuTab === 'dashboard' && !selectedDecisionId ? 'text-blue-600' : 'text-gray-400'}`}
         >
           <LayoutDashboard className="w-5 h-5" />
-          <span className="text-xs font-bold">Dashboard</span>
+          <span className="text-[10px] font-bold">Dash</span>
         </button>
         <button
           onClick={() => { setSelectedDecisionId(null); setActiveMenuTab('archived'); }}
           className={`flex flex-col items-center justify-center min-h-14 gap-1 ${activeMenuTab === 'archived' && !selectedDecisionId ? 'text-blue-600' : 'text-gray-400'}`}
         >
           <Archive className="w-5 h-5" />
-          <span className="text-xs font-bold">Archivio</span>
+          <span className="text-[10px] font-bold">Archive</span>
         </button>
         <div className="flex items-center justify-center -mt-6">
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg shadow-blue-200 dark:shadow-none border-4 border-white dark:border-gray-950"
+            className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg border-4 border-white dark:border-gray-950"
           >
             <Plus className="w-6 h-6 stroke-[3]" />
           </button>
@@ -825,14 +688,14 @@ export default function App() {
           className={`flex flex-col items-center justify-center min-h-14 gap-1 ${activeMenuTab === 'admin' && !selectedDecisionId ? 'text-blue-600' : 'text-gray-400'}`}
         >
           <ShieldCheck className="w-5 h-5" />
-          <span className="text-xs font-bold">Admin</span>
+          <span className="text-[10px] font-bold">Admin</span>
         </button>
         <button
           onClick={() => setShowTeamModal(true)}
           className="flex flex-col items-center justify-center min-h-14 gap-1 text-gray-400"
         >
           <Users className="w-5 h-5" />
-          <span className="text-xs font-bold">Team</span>
+          <span className="text-[10px] font-bold">Team</span>
         </button>
       </nav>
     </div>

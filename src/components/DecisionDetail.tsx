@@ -6,27 +6,21 @@ import {
   Clock,
   ArrowLeft,
   Share2,
-  CheckCircle,
   MessageSquare,
   Send,
   Users,
   Star,
-  Check,
-  Calendar,
-  AlertCircle,
-  FileText,
-  FileDown,
-  Mail
+  FileText
 } from 'lucide-react';
-import { Decision, DecisionOption, Comment } from '../types';
+import { Decision } from '../types';
 import { getTimeRemaining, getCategoryStyles, formatDate, TimeRemaining } from '../utils';
 import { auth } from '../lib/firebase';
 
 interface DecisionDetailProps {
   decision: Decision;
   onBack: () => void;
-  onVote: (decisionId: string | number, optionIds: (string | number)[], ratingValue?: number) => void;
-  onAddComment: (decisionId: string | number, text: string) => void;
+  onVote: (decisionId: string, optionIds: string[], ratingValue?: number) => void;
+  onAddComment: (decisionId: string, text: string) => void;
 }
 
 export const DecisionDetail: React.FC<DecisionDetailProps> = ({
@@ -37,7 +31,7 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
 }) => {
   const [timeLeft, setTimeLeft] = useState<TimeRemaining>(getTimeRemaining(decision.deadline));
   const [newComment, setNewComment] = useState('');
-  const [selectedOptions, setSelectedOptions] = useState<(string | number)[]>(decision.votedOptionIds || []);
+  const [selectedOptions, setSelectedOptions] = useState<string[]>(decision.votedOptionIds || []);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
   const [pendingRating, setPendingRating] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
@@ -57,7 +51,6 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
   const totalVotes = decision.options.reduce((sum, opt) => sum + opt.votes, 0);
   const isExpired = timeLeft.status === 'expired';
   const hasVoted = (decision.votedOptionIds && decision.votedOptionIds.length > 0) || (decision.ratingValue !== undefined);
-  const catStyles = getCategoryStyles(decision.category);
 
   const getTimerBreakdown = () => {
     if (isExpired) return null;
@@ -111,15 +104,7 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
     doc.save(`risultati_${decision.title.replace(/\s+/g, '_')}.pdf`);
   };
 
-  const handleSendEmailResults = () => {
-    const subject = encodeURIComponent(`Risultati della Decisione: ${decision.title}`);
-    const body = encodeURIComponent(`Salve,\n\nEcco i risultati aggiornati per il sondaggio "${decision.title}":\n\n` +
-      decision.options.map(opt => `- ${opt.text}: ${opt.votes} voti`).join('\n') +
-      `\n\nTotale voti espressi: ${totalVotes}\n\nVisualizzato tramite easy decision.`);
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
-  };
-
-  const handleVoteSubmit = (optionId: string | number) => {
+  const handleVoteSubmit = (optionId: string) => {
     if (isExpired || hasVoted) return;
 
     if (decision.type === 'single' || decision.type === 'yes_no') {
@@ -330,8 +315,8 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
                 <div className="grid grid-cols-1 gap-4">
                   {decision.options.map((opt, index) => {
                     const percentage = totalVotes > 0 ? (opt.votes / totalVotes) * 100 : 0;
-                    const isOptionSelected = selectedOptions.includes(opt.id);
-                    const userVotedForThis = decision.votedOptionIds?.includes(opt.id);
+                    const isOptionSelected = selectedOptions.includes(opt.id.toString());
+                    const userVotedForThis = decision.votedOptionIds?.includes(opt.id.toString());
                     const optionLetter = String.fromCharCode(65 + index);
 
                     return (
@@ -353,7 +338,7 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
                             </div>
                           </div>
                         ) : (
-                          <motion.button onClick={() => handleVoteSubmit(opt.id)} whileTap={{ scale: 0.98 }} className={`w-full text-left border-2 rounded-2xl p-5 transition flex items-center gap-4 ${isOptionSelected ? 'border-blue-600 bg-blue-50/20 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900'}`}>
+                          <motion.button onClick={() => handleVoteSubmit(opt.id.toString())} whileTap={{ scale: 0.98 }} className={`w-full text-left border-2 rounded-2xl p-5 transition flex items-center gap-4 ${isOptionSelected ? 'border-blue-600 bg-blue-50/20 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900'}`}>
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${isOptionSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>{optionLetter}</div>
                             <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex-1 leading-snug">{opt.text}</span>
                           </motion.button>
