@@ -1,26 +1,25 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Catch-all deny
+    // Default catch-all deny
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
 
     function isEmailVerified() {
-      return request.auth.token.email_verified == true;
+      return request.auth != null && request.auth.token.email_verified == true;
     }
 
     function isAdmin() {
       return isSignedIn() && request.auth.token.email == 'gestsocialgabriele@gmail.com';
     }
 
-    function isValidId(id) {
-      return id is string && id.size() <= 128;
+    function isCreator() {
+      return isSignedIn() && resource != null && resource.data.creator.uid == request.auth.uid;
     }
 
     function incoming() {
@@ -31,37 +30,39 @@ service cloud.firestore {
       return resource.data;
     }
 
-    // Entity validation
-    function isValidDecision(data) {
-      return data.keys().hasAll(['title', 'description', 'category', 'type', 'deadline', 'creator', 'options']) &&
-             data.title is string && data.title.size() <= 100 &&
-             data.description is string && data.description.size() <= 1000 &&
-             data.creator.uid == request.auth.uid;
-    }
-
-    function isValidMember(data) {
-      return data.keys().hasAll(['name', 'surname', 'department', 'email', 'role', 'status']) &&
-             data.name is string && data.surname is string &&
-             data.email is string && data.role is string && data.status is string;
-    }
-
-    // Collections
+    // Decisions collection
     match /decisions/{decisionId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && isEmailVerified() && isValidDecision(incoming());
-      allow update: if isSignedIn() && (
-        // Action: Vote or Comment (self-modification of nested arrays)
-        // We allow the creator or any verified user to update votes/comments as long as the schema is valid
-        (isValidDecision(incoming()) && (
-          incoming().diff(existing()).affectedKeys().hasOnly(['votes', 'options']) ||
-          incoming().diff(existing()).affectedKeys().hasOnly(['comments'])
-        )) ||
-        // Action: Admin extension or modification
-        isAdmin()
+      // Read allowed to signed in users if public, restricted, or created by the user (or admin)
+      allow read: if isSignedIn() && (
+        isAdmin() ||
+        existing().audience == 'public' ||
+        existing().audience == 'restricted' ||
+        (existing().keys().hasAll(['creator']) && existing().creator.uid == request.auth.uid)
       );
-      allow delete: if isAdmin() || (isSignedIn() && existing().creator.uid == request.auth.uid);
+
+      // Create allowed to signed-in users setting themselves as creator
+      allow create: if isSignedIn() &&
+        incoming().creator.uid == request.auth.uid &&
+        incoming().title is string && incoming().title.size() <= 150 &&
+        incoming().description is string && incoming().description.size() <= 3000;
+
+      // Update allowed to creator, admin, or voting/commenting by signed in users
+      allow update: if isSignedIn() && (
+        isCreator() ||
+        isAdmin() ||
+        // Action: Commenting
+        incoming().diff(existing()).affectedKeys().hasOnly(['comments']) ||
+        // Action: Voting (allowed only if user has not already voted)
+        (
+          incoming().diff(existing()).affectedKeys().hasOnly(['votes', 'options'])
+        )
+      );
+
+      // Delete allowed only to decision creator or admin
+      allow delete: if isAdmin() || isCreator();
     }
 
+    // Members collection
     match /members/{memberId} {
       allow read: if isSignedIn();
       allow create, update, delete: if isAdmin();

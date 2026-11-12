@@ -335,8 +335,17 @@ export default function App() {
     }
   };
 
+  const isAdminUser = useMemo(() => {
+    if (!user) return false;
+    return user.email === 'gestsocialgabriele@gmail.com';
+  }, [user]);
+
   const filteredDecisions = useMemo(() => {
     return decisions.filter(d => {
+      if (d.audience === 'private' && d.creator?.uid !== user?.uid && !isAdminUser) {
+        return false;
+      }
+
       const matchQuery =
         d.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         d.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -360,7 +369,7 @@ export default function App() {
 
       return matchQuery && matchCategory && matchStatus;
     });
-  }, [decisions, searchQuery, activeCategory, statusFilter, activeMenuTab]);
+  }, [decisions, searchQuery, activeCategory, statusFilter, activeMenuTab, user, isAdminUser]);
 
   const handleResetFilters = () => {
     setSearchQuery('');
@@ -444,17 +453,19 @@ export default function App() {
               Archivio
             </button>
 
-            <button
-              onClick={() => { setSelectedDecisionId(null); setActiveMenuTab('admin'); }}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-medium transition cursor-pointer text-left ${
-                activeMenuTab === 'admin' && !selectedDecisionId
-                  ? 'bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-            >
-              <ShieldCheck className="w-4 h-4 opacity-70" />
-              Amministrazione
-            </button>
+            {isAdminUser && (
+              <button
+                onClick={() => { setSelectedDecisionId(null); setActiveMenuTab('admin'); }}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-medium transition cursor-pointer text-left ${
+                  activeMenuTab === 'admin' && !selectedDecisionId
+                    ? 'bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4 opacity-70" />
+                Amministrazione
+              </button>
+            )}
 
             <button
               onClick={() => setShowTeamModal(true)}
@@ -547,7 +558,7 @@ export default function App() {
                     onAddComment={handleAddComment}
                   />
                 </motion.div>
-              ) : activeMenuTab === 'admin' ? (
+              ) : activeMenuTab === 'admin' && isAdminUser ? (
                 <motion.div
                   key="admin-view"
                   initial={{ opacity: 0, y: 10 }}
@@ -721,13 +732,15 @@ export default function App() {
             <Plus className="w-6 h-6 stroke-[3]" />
           </button>
         </div>
-        <button
-          onClick={() => { setSelectedDecisionId(null); setActiveMenuTab('admin'); }}
-          className={`flex flex-col items-center justify-center min-h-14 gap-1 ${activeMenuTab === 'admin' && !selectedDecisionId ? 'text-blue-600' : 'text-gray-400'}`}
-        >
-          <ShieldCheck className="w-5 h-5" />
-          <span className="text-[10px] font-bold">Admin</span>
-        </button>
+        {isAdminUser && (
+          <button
+            onClick={() => { setSelectedDecisionId(null); setActiveMenuTab('admin'); }}
+            className={`flex flex-col items-center justify-center min-h-14 gap-1 ${activeMenuTab === 'admin' && !selectedDecisionId ? 'text-blue-600' : 'text-gray-400'}`}
+          >
+            <ShieldCheck className="w-5 h-5" />
+            <span className="text-[10px] font-bold">Admin</span>
+          </button>
+        )}
         <button
           onClick={() => setShowTeamModal(true)}
           className="flex flex-col items-center justify-center min-h-14 gap-1 text-gray-400"
