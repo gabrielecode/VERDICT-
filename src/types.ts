@@ -36,6 +36,13 @@ export interface Comment {
 export type DecisionType = 'single' | 'multiple' | 'yes_no' | 'rating';
 export type DecisionAudience = 'public' | 'private' | 'restricted';
 
+export interface Vote {
+  userId: string;
+  optionIds: string[];
+  ratingValue?: number;
+  timestamp: string;
+}
+
 export interface Decision {
   id: string;
   title: string;
@@ -52,6 +59,7 @@ export interface Decision {
   comments: Comment[];
   createdAt: string;
   attachments?: string[];
+  votes?: Vote[];
 }
 
 export interface AuditLog {

@@ -28,13 +28,11 @@ import {
   onSnapshot, 
   query, 
   orderBy,
-  serverTimestamp,
-  increment,
   arrayUnion,
-  getDocs
+  runTransaction
 } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { Decision, TeamMember, Toast, ToastType, DecisionOption } from './types';
+import { Decision, TeamMember, Toast, ToastType, DecisionOption, Vote as VoteData } from './types';
 import { DecisionCard } from './components/DecisionCard';
 import { CreationModal } from './components/CreationModal';
 import { DecisionDetail } from './components/DecisionDetail';
@@ -95,7 +93,8 @@ export default function App() {
       setDecisions(data);
       setLoading(false);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'decisions');
+      const msg = handleFirestoreError(error, OperationType.LIST, 'decisions');
+      addToast(msg, 'error');
     });
 
     const mQuery = query(collection(db, 'members'), orderBy('name', 'asc'));
@@ -103,7 +102,8 @@ export default function App() {
       const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as TeamMember));
       setMembers(data);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'members');
+      const msg = handleFirestoreError(error, OperationType.LIST, 'members');
+      addToast(msg, 'error');
     });
 
     return () => {
@@ -198,8 +198,8 @@ export default function App() {
       });
       addToast('Decisione pubblicata!', 'success');
     } catch (e) {
-      addToast('Errore nella pubblicazione.', 'error');
-      handleFirestoreError(e, OperationType.CREATE, 'decisions');
+      const msg = handleFirestoreError(e, OperationType.CREATE, 'decisions');
+      addToast(msg, 'error');
     }
   };
 
@@ -207,40 +207,52 @@ export default function App() {
     if (!user) return;
     try {
       const dRef = doc(db, 'decisions', decisionId);
-      const d = decisions.find(dec => dec.id === decisionId);
-      if (!d) return;
 
-      const newVotes = [...(d as any).votes || []];
-      const existingVoteIdx = newVotes.findIndex((v: any) => v.userId === user.uid);
-
-      if (existingVoteIdx > -1) {
-        addToast('Hai già votato questa proposta.', 'warning');
-        return;
-      }
-
-      newVotes.push({
-        userId: user.uid,
-        optionIds,
-        ratingValue,
-        timestamp: new Date().toISOString()
-      });
-
-      const updatedOptions = d.options.map(opt => {
-        if (optionIds.includes(opt.id.toString())) {
-          return { ...opt, votes: opt.votes + 1 };
+      await runTransaction(db, async (transaction) => {
+        const dSnap = await transaction.get(dRef);
+        if (!dSnap.exists()) {
+          throw new Error('Decisione non trovata');
         }
-        return opt;
-      });
 
-      await updateDoc(dRef, {
-        votes: newVotes,
-        options: updatedOptions
+        const data = dSnap.data();
+        const currentVotes: VoteData[] = data.votes || [];
+
+        const existingVoteIdx = currentVotes.findIndex((v: VoteData) => v.userId === user.uid);
+        if (existingVoteIdx > -1) {
+          throw new Error('ALREADY_VOTED');
+        }
+
+        const newVote: VoteData = {
+          userId: user.uid,
+          optionIds,
+          ...(ratingValue !== undefined ? { ratingValue } : {}),
+          timestamp: new Date().toISOString()
+        };
+
+        const newVotes = [...currentVotes, newVote];
+
+        const currentOptions: DecisionOption[] = data.options || [];
+        const updatedOptions = currentOptions.map(opt => {
+          if (optionIds.includes(opt.id.toString())) {
+            return { ...opt, votes: (opt.votes || 0) + 1 };
+          }
+          return opt;
+        });
+
+        transaction.update(dRef, {
+          votes: newVotes,
+          options: updatedOptions
+        });
       });
 
       addToast('Voto registrato!', 'success');
-    } catch (e) {
-      addToast('Errore nel voto.', 'error');
-      handleFirestoreError(e, OperationType.UPDATE, `decisions/${decisionId}`);
+    } catch (e: any) {
+      if (e?.message === 'ALREADY_VOTED') {
+        addToast('Hai già votato questa proposta.', 'warning');
+        return;
+      }
+      const msg = handleFirestoreError(e, OperationType.UPDATE, `decisions/${decisionId}`);
+      addToast(msg, 'error');
     }
   };
 
@@ -259,8 +271,8 @@ export default function App() {
         comments: arrayUnion(newComment)
       });
     } catch (e) {
-      addToast('Errore nel commento.', 'error');
-      handleFirestoreError(e, OperationType.UPDATE, `decisions/${decisionId}`);
+      const msg = handleFirestoreError(e, OperationType.UPDATE, `decisions/${decisionId}`);
+      addToast(msg, 'error');
     }
   };
 
@@ -268,8 +280,8 @@ export default function App() {
     try {
       await addDoc(collection(db, 'members'), newMember);
     } catch (e) {
-      addToast('Errore aggiunta membro.', 'error');
-      handleFirestoreError(e, OperationType.CREATE, 'members');
+      const msg = handleFirestoreError(e, OperationType.CREATE, 'members');
+      addToast(msg, 'error');
     }
   };
 
@@ -277,8 +289,8 @@ export default function App() {
     try {
       await deleteDoc(doc(db, 'members', id));
     } catch (e) {
-      addToast('Errore eliminazione.', 'error');
-      handleFirestoreError(e, OperationType.DELETE, `members/${id}`);
+      const msg = handleFirestoreError(e, OperationType.DELETE, `members/${id}`);
+      addToast(msg, 'error');
     }
   };
 
@@ -286,8 +298,8 @@ export default function App() {
     try {
       await updateDoc(doc(db, 'members', id), { status });
     } catch (e) {
-      addToast('Errore aggiornamento.', 'error');
-      handleFirestoreError(e, OperationType.UPDATE, `members/${id}`);
+      const msg = handleFirestoreError(e, OperationType.UPDATE, `members/${id}`);
+      addToast(msg, 'error');
     }
   };
 
@@ -296,8 +308,8 @@ export default function App() {
       await deleteDoc(doc(db, 'decisions', id));
       if (selectedDecisionId === id) setSelectedDecisionId(null);
     } catch (e) {
-      addToast('Errore eliminazione.', 'error');
-      handleFirestoreError(e, OperationType.DELETE, `decisions/${id}`);
+      const msg = handleFirestoreError(e, OperationType.DELETE, `decisions/${id}`);
+      addToast(msg, 'error');
     }
   };
 
@@ -308,8 +320,8 @@ export default function App() {
       const newDeadline = new Date(Math.max(Date.now(), new Date(decision.deadline).getTime()) + hours * 3600000).toISOString();
       await updateDoc(doc(db, 'decisions', id), { deadline: newDeadline });
     } catch (e) {
-      addToast('Errore proroga.', 'error');
-      handleFirestoreError(e, OperationType.UPDATE, `decisions/${id}`);
+      const msg = handleFirestoreError(e, OperationType.UPDATE, `decisions/${id}`);
+      addToast(msg, 'error');
     }
   };
 
@@ -318,8 +330,8 @@ export default function App() {
       const pastDeadline = new Date(Date.now() - 1000).toISOString();
       await updateDoc(doc(db, 'decisions', id), { deadline: pastDeadline });
     } catch (e) {
-      addToast('Errore chiusura.', 'error');
-      handleFirestoreError(e, OperationType.UPDATE, `decisions/${id}`);
+      const msg = handleFirestoreError(e, OperationType.UPDATE, `decisions/${id}`);
+      addToast(msg, 'error');
     }
   };
 
