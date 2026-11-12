@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Vote,
@@ -34,15 +34,16 @@ import {
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { Decision, TeamMember, Toast, ToastType, DecisionOption, Vote as VoteData } from './types';
 import { DecisionCard } from './components/DecisionCard';
-import { CreationModal } from './components/CreationModal';
-import { DecisionDetail } from './components/DecisionDetail';
-import { AdminPanel } from './components/AdminPanel';
 import { ToastContainer } from './components/ToastContainer';
 import { HomePage } from './components/HomePage';
 import { Footer } from './components/Footer';
 import { LegalModal } from './components/LegalModal';
 import { getTimeRemaining, CATEGORIES } from './utils';
 import { auth, db, signInWithGoogle, logout, handleFirestoreError, OperationType } from './lib/firebase';
+
+const CreationModal = lazy(() => import('./components/CreationModal').then(m => ({ default: m.CreationModal })));
+const DecisionDetail = lazy(() => import('./components/DecisionDetail').then(m => ({ default: m.DecisionDetail })));
+const AdminPanel = lazy(() => import('./components/AdminPanel').then(m => ({ default: m.AdminPanel })));
 
 export default function App() {
   const [isDark, setIsDark] = useState(() => {
@@ -551,12 +552,14 @@ export default function App() {
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.25 }}
                 >
-                  <DecisionDetail
-                    decision={activeDecision}
-                    onBack={() => setSelectedDecisionId(null)}
-                    onVote={handleVote}
-                    onAddComment={handleAddComment}
-                  />
+                  <Suspense fallback={<div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 text-blue-600 animate-spin" /></div>}>
+                    <DecisionDetail
+                      decision={activeDecision}
+                      onBack={() => setSelectedDecisionId(null)}
+                      onVote={handleVote}
+                      onAddComment={handleAddComment}
+                    />
+                  </Suspense>
                 </motion.div>
               ) : activeMenuTab === 'admin' && isAdminUser ? (
                 <motion.div
@@ -566,16 +569,18 @@ export default function App() {
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.25 }}
                 >
-                  <AdminPanel
-                    members={members}
-                    onAddMember={handleAddMember}
-                    onDeleteMember={handleDeleteMember}
-                    onUpdateMemberStatus={handleUpdateMemberStatus}
-                    decisions={decisions}
-                    onDeleteDecision={handleDeleteDecision}
-                    onExtendDeadline={handleExtendDecisionDeadline}
-                    onExpireImmediately={handleExpireDecisionImmediately}
-                  />
+                  <Suspense fallback={<div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 text-blue-600 animate-spin" /></div>}>
+                    <AdminPanel
+                      members={members}
+                      onAddMember={handleAddMember}
+                      onDeleteMember={handleDeleteMember}
+                      onUpdateMemberStatus={handleUpdateMemberStatus}
+                      decisions={decisions}
+                      onDeleteDecision={handleDeleteDecision}
+                      onExtendDeadline={handleExtendDecisionDeadline}
+                      onExpireImmediately={handleExpireDecisionImmediately}
+                    />
+                  </Suspense>
                 </motion.div>
               ) : (
                 <motion.div
@@ -656,11 +661,13 @@ export default function App() {
 
       <AnimatePresence>
         {isCreateModalOpen && (
-          <CreationModal
-            isOpen={isCreateModalOpen}
-            onClose={() => setIsCreateModalOpen(false)}
-            onPublish={handlePublishDecision}
-          />
+          <Suspense fallback={null}>
+            <CreationModal
+              isOpen={isCreateModalOpen}
+              onClose={() => setIsCreateModalOpen(false)}
+              onPublish={handlePublishDecision}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
 

@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import {
   Clock,
   ArrowLeft,
@@ -90,7 +88,11 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
+    const { jsPDF } = await import('jspdf');
+    const autoTableModule = await import('jspdf-autotable');
+    const autoTable = (autoTableModule as any).default || autoTableModule;
+
     const doc = new jsPDF();
     doc.text(`Risultati: ${decision.title}`, 10, 10);
     
