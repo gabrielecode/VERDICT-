@@ -112,10 +112,10 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
   };
 
   const handleSendEmailResults = () => {
-    const subject = encodeURIComponent(`Risultati del Verdict: ${decision.title}`);
+    const subject = encodeURIComponent(`Risultati della Decisione: ${decision.title}`);
     const body = encodeURIComponent(`Salve,\n\nEcco i risultati aggiornati per il sondaggio "${decision.title}":\n\n` +
       decision.options.map(opt => `- ${opt.text}: ${opt.votes} voti`).join('\n') +
-      `\n\nTotale voti espressi: ${totalVotes}\n\nVisualizzato tramite Verdict.`);
+      `\n\nTotale voti espressi: ${totalVotes}\n\nVisualizzato tramite easy decision.`);
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
   };
 
@@ -180,26 +180,26 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
       <div className="flex items-center justify-between">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-xs font-bold text-gray-600 dark:text-gray-300 hover:text-blue-600 bg-white dark:bg-gray-900 hover:bg-gray-50 border border-gray-200 dark:border-gray-800 px-4 py-2.5 rounded-xl transition shadow-xs cursor-pointer"
+          className="flex items-center gap-2 text-[13px] font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
-          Torna alla Dashboard
+          Dashboard
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           <button
             onClick={handleCopyLink}
-            className="flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-4 py-2.5 rounded-xl transition cursor-pointer relative"
+            className="flex items-center gap-2 text-[13px] font-medium text-slate-900 dark:text-white hover:opacity-70 transition cursor-pointer relative"
           >
             <Share2 className="w-4 h-4" />
-            Condividi Link
+            Condividi
             <AnimatePresence>
               {copied && (
                 <motion.span
                   initial={{ opacity: 0, y: 10, scale: 0.9 }}
                   animate={{ opacity: 1, y: -40, scale: 1 }}
                   exit={{ opacity: 0, y: -20, scale: 0.9 }}
-                  className="absolute left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-3 rounded-md font-bold whitespace-nowrap shadow-md z-20 pointer-events-none"
+                  className="absolute left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[11px] py-1 px-3 rounded font-medium whitespace-nowrap shadow-md z-20 pointer-events-none"
                 >
                   Copiato!
                 </motion.span>
@@ -207,30 +207,20 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
             </AnimatePresence>
           </button>
           
-          <button onClick={handleExportCSV} className="flex items-center gap-2 text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 px-4 py-2.5 rounded-xl transition cursor-pointer">
-            <FileText className="w-4 h-4" /> CSV
-          </button>
-          
-          <button onClick={handleExportPDF} className="flex items-center gap-2 text-xs font-bold text-rose-600 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 px-4 py-2.5 rounded-xl transition cursor-pointer">
-            <FileDown className="w-4 h-4" /> PDF
-          </button>
-
-          <button onClick={handleSendEmailResults} className="flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-4 py-2.5 rounded-xl transition cursor-pointer">
-            <Mail className="w-4 h-4" /> Invia Email
-          </button>
+          <div className="flex items-center gap-3 ml-4 border-l border-slate-200 dark:border-slate-800 pl-4">
+            <button onClick={handleExportCSV} className="text-[13px] font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition cursor-pointer">CSV</button>
+            <button onClick={handleExportPDF} className="text-[13px] font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition cursor-pointer">PDF</button>
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 border border-gray-200 dark:border-gray-800 shadow-xs space-y-6">
-            <div className="flex items-center justify-between">
-              <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg border ${catStyles.bg} ${catStyles.text} ${catStyles.border}`}>
-                {decision.category}
-              </span>
-              <div className="text-xs text-slate-400 font-medium">
-                Creato il {formatDate(decision.createdAt)}
-              </div>
+            <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <span>{decision.category}</span>
+              <span aria-hidden="true" className="opacity-40">·</span>
+              <span>{formatDate(decision.createdAt)}</span>
             </div>
 
             <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white font-display tracking-tight leading-tight">

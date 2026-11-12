@@ -220,8 +220,12 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
       >
         <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50 dark:bg-gray-950 shrink-0">
           <div>
-            <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">Crea un nuovo Verdict</span>
-            <h2 className="text-xl font-bold text-gray-950 dark:text-white font-display">Procedura Guidata</h2>
+            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <span>Nuova Proposta</span>
+              <span aria-hidden="true" className="opacity-40">·</span>
+              <span>Procedura Guidata</span>
+            </div>
+            <h2 className="text-xl font-semibold text-slate-950 dark:text-white font-display mt-2">Crea una proposta</h2>
           </div>
           <button
             onClick={onClose}
@@ -233,13 +237,13 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
 
         <div className="bg-gray-50/50 dark:bg-gray-950 border-b border-gray-150 dark:border-gray-800 shrink-0">
           <div className="px-6 py-3">
-            <span className="text-xs font-bold text-blue-600">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
               Passo {step} di 5 · {
                 step === 1 ? 'Titolo e Descrizione' :
                 step === 2 ? 'Tipo Decisione' :
                 step === 3 ? 'Opzioni / Scelte' :
                 step === 4 ? 'Scadenza e Pubblico' :
-                'Anteprima e Conferma'
+                'Conferma'
               }
             </span>
           </div>
@@ -263,7 +267,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                 className="space-y-6"
               >
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Titolo del Verdict</label>
+                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Titolo della Proposta</label>
                   <input
                     type="text"
                     value={title}
@@ -300,10 +304,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                         key={cat}
                         type="button"
                         onClick={() => setCategory(cat)}
-                        className={`px-4 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                        className={`px-4 py-2 rounded-lg text-[13px] font-medium transition cursor-pointer ${
                           category === cat
-                            ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
-                            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-slate-600 dark:text-gray-400 hover:border-gray-300'
+                            ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-sm'
+                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                         }`}
                       >
                         {cat}
@@ -425,7 +429,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
               >
                 <div>
                   <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">Configura le opzioni di voto</h3>
-                  <p className="text-slate-500 dark:text-gray-400 text-xs mb-4">Compila le scelte disponibili per gli utenti del tuo Verdict.</p>
+                  <p className="text-slate-500 dark:text-gray-400 text-xs mb-4">Compila le scelte disponibili per gli utenti del tuo easy decision.</p>
                 </div>
 
                 {decisionType === 'yes_no' && (
@@ -687,7 +691,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
               onClick={handleConfirmPublish}
               className="flex items-center gap-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl transition cursor-pointer shadow-md"
             >
-              Pubblica Verdict
+              Pubblica Decisione
               <CheckCircle2 className="w-4.5 h-4.5" />
             </button>
           )}

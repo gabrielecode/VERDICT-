@@ -25,7 +25,7 @@ interface HomePageProps {
 
 export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, toggleDarkMode }) => {
   useEffect(() => {
-    document.title = "Verdict | Software per decisioni di team: votazioni e sondaggi online";
+    document.title = "easy decision | Software per decisioni di team: votazioni e sondaggi online";
   }, []);
 
   const [legalModal, setLegalModal] = React.useState<{ isOpen: boolean; type: 'privacy' | 'cookie' }>({
@@ -39,8 +39,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
 
   const faqs = [
     {
-      q: "Cos'è Verdict e come funziona?",
-      a: "Verdict è una piattaforma progettata per agevolare le decisioni collettive all'interno dei team aziendali. Funziona permettendo agli utenti di creare proposte di voto strutturate, raccogliere feedback in tempo reale dai collaboratori e visualizzare i risultati in modo chiaro."
+      q: "Cos'è easy decision e come funziona?",
+      a: "easy decision è una piattaforma progettata per agevolare le decisioni collettive all'interno dei team aziendali. Funziona permettendo agli utenti di creare proposte di voto strutturate, raccogliere feedback in tempo reale dai collaboratori e visualizzare i risultati in modo chiaro."
     },
     {
       q: "Quali tipi di votazione posso creare?",
@@ -48,7 +48,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
     },
     {
       q: "È necessaria la registrazione?",
-      a: "Sì, per garantire l'integrità dei voti e la collaborazione in tempo reale, Verdict utilizza l'autenticazione Google. Questo permette di identificare i partecipanti e gestire i permessi all'interno del team."
+      a: "Sì, per garantire l'integrità dei voti e la collaborazione in tempo reale, easy decision utilizza l'autenticazione Google. Questo permette di identificare i partecipanti e gestire i permessi all'interno del team."
     },
     {
       q: "Dove vengono salvati i dati?",
@@ -65,7 +65,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
               <Vote className="w-5 h-5 stroke-[2.5]" aria-hidden="true" />
             </div>
             <div>
-              <span className="font-display font-bold text-xl tracking-tight block">Verdict</span>
+              <span className="font-display font-bold text-xl tracking-tight block">easy decision</span>
               <span className="text-xs font-bold text-blue-600 uppercase tracking-widest block">SQL Cloud</span>
             </div>
           </div>
@@ -89,30 +89,30 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
       </header>
 
       <main>
-        <section className="max-w-6xl mx-auto px-6 py-16 md:py-24 grid grid-cols-1 md:grid-cols-12 gap-12 items-center">
-          <div className="md:col-span-7 space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/50 border border-blue-100 dark:border-blue-900 text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5" aria-hidden="true" /> Ora con sincronizzazione Cloud Real-time
+        <section className="max-w-6xl mx-auto px-6 py-20 md:py-32 grid grid-cols-1 md:grid-cols-12 gap-16 items-center">
+          <div className="md:col-span-7 space-y-8">
+            <div className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-[0.2em]">
+              Governance di Team Real-time
             </div>
-            <h1 className="text-4xl md:text-6xl font-display font-extrabold tracking-tight leading-tight">
-              Decidi insieme al tuo team <span className="text-blue-600">in tempo reale</span>
+            <h1 className="text-5xl md:text-7xl font-display font-semibold tracking-tight leading-[1.05] text-slate-900 dark:text-white">
+              Semplifica le <br /><span className="text-blue-600">scelte collettive.</span>
             </h1>
-            <p className={`text-base md:text-lg leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-              Verdict è la piattaforma professionale per la governance dei team. Crea proposte, raccogli voti e discuti i bivi decisionali in un ambiente sicuro e trasparente.
+            <p className={`text-lg md:text-xl leading-relaxed max-w-xl ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              easy decision è l'ambiente professionale dove i team risolvono bivi decisionali con trasparenza e velocità.
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row gap-6 pt-6 items-center">
               <button
                 onClick={onLoginSuccess}
-                className="px-8 py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-10 py-5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-sm transition shadow-lg hover:opacity-90 flex items-center justify-center gap-3"
               >
                 Inizia ora gratis <ArrowRight className="w-4 h-4" />
               </button>
-              <div className="flex -space-x-3 items-center ml-2">
+              <div className="flex -space-x-3 items-center">
                 {[1,2,3,4].map(i => (
-                  <img key={i} src={`https://i.pravatar.cc/100?img=${i+10}`} className="w-10 h-10 rounded-full border-2 border-white dark:border-gray-950 shadow-sm" alt="User" />
+                  <img key={i} src={`https://i.pravatar.cc/100?img=${i+10}`} className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-950 grayscale opacity-80" alt="User" />
                 ))}
-                <span className={`pl-5 text-xs font-bold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>+500 decisioni prese</span>
+                <span className={`pl-6 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>+500 decisioni</span>
               </div>
             </div>
           </div>
@@ -159,36 +159,24 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
           </div>
         </section>
 
-        <section className={`py-20 border-t ${isDark ? 'bg-gray-900/50 border-gray-800' : 'bg-gray-100/70 border-gray-200'}`}>
+        <section className={`py-24 border-y ${isDark ? 'bg-slate-900/30 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
           <div className="max-w-6xl mx-auto px-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              <div className="space-y-3">
-                 <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-lg">
-                    <ShieldCheck className="w-5 h-5" />
-                 </div>
-                 <h3 className="font-bold">Sicuro</h3>
-                 <p className="text-xs text-gray-500">Autenticazione Google e permessi granulari per il team.</p>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
+              <div className="space-y-4">
+                 <h3 className="font-semibold text-slate-900 dark:text-white">Sicurezza</h3>
+                 <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed">Autenticazione Google e controllo accessi granulare per ogni decisione.</p>
               </div>
-              <div className="space-y-3">
-                 <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-lg">
-                    <MessageSquare className="w-5 h-5" />
-                 </div>
-                 <h3 className="font-bold">Collaborativo</h3>
-                 <p className="text-xs text-gray-500">Commenta e discuti ogni proposta in tempo reale.</p>
+              <div className="space-y-4">
+                 <h3 className="font-semibold text-slate-900 dark:text-white">Collaborazione</h3>
+                 <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed">Discussioni contestuali e feedback istantaneo per ogni membro del team.</p>
               </div>
-              <div className="space-y-3">
-                 <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-lg">
-                    <Calendar className="w-5 h-5" />
-                 </div>
-                 <h3 className="font-bold">Organizzato</h3>
-                 <p className="text-xs text-gray-500">Gestisci scadenze e archivia i verdetti passati.</p>
+              <div className="space-y-4">
+                 <h3 className="font-semibold text-slate-900 dark:text-white">Organizzazione</h3>
+                 <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed">Archiviazione automatica e storico delle decisioni per audit futuri.</p>
               </div>
-              <div className="space-y-3">
-                 <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-lg">
-                    <Download className="w-5 h-5" />
-                 </div>
-                 <h3 className="font-bold">Esportabile</h3>
-                 <p className="text-xs text-gray-500">Genera report in PDF e CSV per i tuoi meeting.</p>
+              <div className="space-y-4">
+                 <h3 className="font-semibold text-slate-900 dark:text-white">Analisi</h3>
+                 <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed">Esporta i risultati in formati professionali per i tuoi report aziendali.</p>
               </div>
             </div>
           </div>

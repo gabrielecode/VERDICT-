@@ -1,5 +1,5 @@
 {
-  "name": "Verdict",
+  "name": "easy decision",
   "description": "Una piattaforma elegante e intuitiva per prendere decisioni collettive, votare opzioni e confrontarsi nei commenti.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

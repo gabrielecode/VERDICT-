@@ -187,13 +187,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <ShieldCheck className="w-6 h-6 stroke-[2]" />
           </div>
           <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">Amministrazione</span>
-              <span className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-xs font-black uppercase tracking-wider px-2 py-0.5 rounded-md border border-emerald-100 dark:border-emerald-900/30">
-                Pannello Controllo
-              </span>
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <span>Amministrazione</span>
+              <span aria-hidden="true" className="opacity-40">·</span>
+              <span className="text-slate-900 dark:text-slate-200">Pannello Controllo</span>
             </div>
-            <h1 className="text-xl font-bold font-display text-gray-950 dark:text-white mt-0.5">Controllo Backend & Gestione</h1>
+            <h1 className="text-xl font-semibold font-display text-slate-950 dark:text-white mt-2">Gestione Spazio Lavoro</h1>
           </div>
         </div>
 
@@ -231,36 +230,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
           
           {/* Desktop Menu */}
-          <div className="hidden md:flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl gap-1">
+          <div className="hidden md:flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg gap-1">
             <button
               onClick={() => setActiveSubTab('members')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${activeSubTab === 'members' ? 'bg-white dark:bg-gray-700 text-gray-950 dark:text-white shadow-xs' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium transition cursor-pointer ${activeSubTab === 'members' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
             >
-              <Users className="w-3.5 h-3.5" /> Gestione Team ({members.length})
+              Membri ({members.length})
             </button>
             <button
               onClick={() => setActiveSubTab('decisions')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${activeSubTab === 'decisions' ? 'bg-white dark:bg-gray-700 text-gray-950 dark:text-white shadow-xs' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium transition cursor-pointer ${activeSubTab === 'decisions' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
             >
-              <Vote className="w-3.5 h-3.5" /> Gestione Sondaggi ({decisions.length})
+              Sondaggi ({decisions.length})
             </button>
             <button
               onClick={() => setActiveSubTab('analytics')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${activeSubTab === 'analytics' ? 'bg-white dark:bg-gray-700 text-gray-950 dark:text-white shadow-xs' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium transition cursor-pointer ${activeSubTab === 'analytics' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
             >
-              <BarChart3 className="w-3.5 h-3.5" /> Analytics
+              Analytics
             </button>
             <button
               onClick={() => setActiveSubTab('audit')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${activeSubTab === 'audit' ? 'bg-white dark:bg-gray-700 text-gray-950 dark:text-white shadow-xs' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium transition cursor-pointer ${activeSubTab === 'audit' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
             >
-              <ListChecks className="w-3.5 h-3.5" /> Audit Log
+              Audit
             </button>
             <button
               onClick={() => setActiveSubTab('settings')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${activeSubTab === 'settings' ? 'bg-white dark:bg-gray-700 text-gray-950 dark:text-white shadow-xs' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium transition cursor-pointer ${activeSubTab === 'settings' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
             >
-              <Briefcase className="w-3.5 h-3.5" /> Impostazioni
+              Impostazioni
             </button>
           </div>
         </div>
@@ -327,7 +326,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       value={newMemberEmail}
                       maxLength={100}
                       onChange={(e) => setNewMemberEmail(e.target.value)}
-                      placeholder="sofia@verdict.it"
+                      placeholder="sofia@easydecision.it"
                       className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-base md:text-xs font-medium placeholder-slate-400 transition"
                     />
                   </div>

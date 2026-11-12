@@ -38,11 +38,11 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 
 export default function App() {
   const [isDark, setIsDark] = useState(() => {
-    return localStorage.getItem('verdict_dark_mode_v1') === 'true';
+    return localStorage.getItem('easy_decision_dark_mode_v1') === 'true';
   });
 
   useEffect(() => {
-    localStorage.setItem('verdict_dark_mode_v1', String(isDark));
+    localStorage.setItem('easy_decision_dark_mode_v1', String(isDark));
     document.documentElement.classList.toggle('dark', isDark);
   }, [isDark]);
   
@@ -376,7 +376,7 @@ export default function App() {
                   <Vote className="w-5 h-5 stroke-[2.5]" />
                 </div>
                 <div>
-                  <span className="font-display font-bold text-lg text-gray-950 dark:text-white tracking-tight block">Verdict</span>
+                  <span className="font-display font-bold text-lg text-gray-950 dark:text-white tracking-tight block">easy decision</span>
                   <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mt-[-2px] block">SQL Cloud</span>
                 </div>
               </div>
@@ -396,38 +396,38 @@ export default function App() {
           <nav className={`p-4 space-y-1.5 ${isSidebarOpen ? 'block' : 'hidden md:block'}`}>
             <button
               onClick={() => { setSelectedDecisionId(null); setActiveMenuTab('dashboard'); }}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold tracking-tight transition cursor-pointer text-left ${
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-medium transition cursor-pointer text-left ${
                 activeMenuTab === 'dashboard' && !selectedDecisionId
-                  ? 'bg-gray-100 dark:bg-gray-900 text-blue-600 dark:text-blue-400'
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900'
+                  ? 'bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              <LayoutDashboard className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              <LayoutDashboard className="w-4 h-4 opacity-70" />
               Dashboard
             </button>
 
             <button
               onClick={() => { setSelectedDecisionId(null); setActiveMenuTab('archived'); }}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold tracking-tight transition cursor-pointer text-left ${
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-medium transition cursor-pointer text-left ${
                 activeMenuTab === 'archived' && !selectedDecisionId
-                  ? 'bg-gray-100 dark:bg-gray-900 text-blue-600 dark:text-blue-400'
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900'
+                  ? 'bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              <Archive className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-              Decisioni Archiviate
+              <Archive className="w-4 h-4 opacity-70" />
+              Archivio
             </button>
 
             <button
               onClick={() => { setSelectedDecisionId(null); setActiveMenuTab('admin'); }}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold tracking-tight transition cursor-pointer text-left ${
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-medium transition cursor-pointer text-left ${
                 activeMenuTab === 'admin' && !selectedDecisionId
-                  ? 'bg-gray-100 dark:bg-gray-900 text-blue-600 dark:text-blue-400'
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900'
+                  ? 'bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              <ShieldCheck className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-              Pannello Admin
+              <ShieldCheck className="w-4 h-4 opacity-70" />
+              Amministrazione
             </button>
 
             <button
@@ -446,7 +446,7 @@ export default function App() {
             className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-3 rounded-xl transition duration-150 shadow-sm shadow-blue-100 cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
-            Nuovo Verdict
+            Nuova Proposta
           </button>
 
           <div className="flex items-center gap-2.5 px-2">
@@ -478,13 +478,13 @@ export default function App() {
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-sm">
                 <Vote className="w-4.5 h-4.5 stroke-[2.5]" />
               </div>
-              <span className="font-display font-bold text-base text-gray-950 dark:text-white tracking-tight">Verdict</span>
+              <span className="font-display font-bold text-base text-gray-950 dark:text-white tracking-tight">easy decision</span>
             </div>
 
-            <div className="hidden md:flex items-center gap-2">
-              <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Spazio Lavoro</span>
-              <span className="text-gray-300 dark:text-gray-700 text-xs">/</span>
-              <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-900">Team Alpha</span>
+            <div className="hidden md:flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              <span>Spazio Lavoro</span>
+              <span aria-hidden="true" className="opacity-40">·</span>
+              <span className="text-slate-900 dark:text-slate-200">Team Alpha</span>
             </div>
           </div>
 
@@ -496,9 +496,9 @@ export default function App() {
               {isDark ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5" />}
             </button>
 
-            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 px-3 py-1.5 rounded-full">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-              Sincronizzato SQL Cloud
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 py-1.5">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+              Sincronizzato
             </span>
 
             <button
@@ -566,16 +566,15 @@ export default function App() {
                       <Vote className="w-64 h-64 text-blue-600" />
                     </div>
 
-                    <div className="max-w-2xl space-y-4">
-                      <div className="inline-flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full border border-blue-100 dark:border-blue-900">
-                        <Sparkles className="w-3.5 h-3.5" />
-                        Decidi Insieme, Meglio
+                    <div className="max-w-2xl space-y-6">
+                      <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em]">
+                        Collaborazione Strategica
                       </div>
-                      <h1 className="text-2xl lg:text-3xl font-extrabold font-display tracking-tight leading-tight text-gray-950 dark:text-white">
-                        Risolvi i bivi decisionali e raccogli pareri con il tuo team.
+                      <h1 className="text-3xl lg:text-4xl font-semibold font-display tracking-tight leading-[1.1] text-slate-950 dark:text-white text-wrap-balance">
+                        Prendi decisioni migliori,<br />più velocemente.
                       </h1>
-                      <p className="text-gray-500 dark:text-gray-400 text-xs font-normal leading-relaxed">
-                        Crea proposte interattive per scelte singole, multiple, sì/no o valutazioni quantitative. Condividi il link istantaneo e avvia discussioni trasparenti per giungere a un verdetto unanime.
+                      <p className="text-slate-500 dark:text-slate-400 text-sm font-normal leading-relaxed max-w-lg">
+                        Crea proposte strutturate per il tuo team. Raccogli voti, avvia discussioni e giungi a verdetti trasparenti in tempo reale.
                       </p>
                     </div>
 
@@ -607,15 +606,15 @@ export default function App() {
                       />
                     </div>
 
-                    <div className="flex flex-wrap gap-1.5 w-full lg:w-auto justify-start lg:justify-center">
+                    <div className="flex flex-wrap gap-1 w-full lg:w-auto justify-start lg:justify-center">
                       {['Tutte', ...CATEGORIES].map((cat) => (
                         <button
                           key={cat}
                           onClick={() => setActiveCategory(cat)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                          className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition cursor-pointer ${
                             activeCategory === cat
-                              ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
-                              : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                              ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-sm'
+                              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                           }`}
                         >
                           {cat}
@@ -644,7 +643,7 @@ export default function App() {
                     <div className="flex items-center justify-between">
                       <h2 className="text-base font-extrabold text-gray-950 dark:text-white font-display tracking-tight flex items-center gap-2">
                         <TrendingUp className="w-4 h-4 text-blue-600" />
-                        {activeMenuTab === 'archived' ? 'Archivio Sondaggi Conclusi' : 'Feed dei Verdetti'}
+                        {activeMenuTab === 'archived' ? 'Archivio Sondaggi Conclusi' : 'Feed delle Decisioni'}
                       </h2>
                       <span className="text-xs text-gray-400 font-medium">
                         Risultati: {filteredDecisions.length} di {decisions.length}
@@ -657,7 +656,7 @@ export default function App() {
                           <Inbox className="w-7 h-7" />
                         </div>
                         <div>
-                          <h3 className="text-base font-bold text-gray-950 dark:text-white">Nessun Verdict trovato</h3>
+                          <h3 className="text-base font-bold text-gray-950 dark:text-white">Nessuna Decisione trovata</h3>
                           <p className="text-gray-500 dark:text-gray-400 text-xs mt-1 leading-relaxed">
                             Non ci sono decisioni corrispondenti ai parametri inseriti. Prova a reimpostare la ricerca o creane una nuova.
                           </p>
@@ -751,7 +750,7 @@ export default function App() {
 
               <div className="p-6 space-y-4">
                 <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-normal">
-                  Questi sono i membri attivi registrati in questo spazio Verdict. Ricevono notifiche push per ogni nuova proposta pubblicata.
+                  Questi sono i membri attivi registrati in questo spazio easy decision. Ricevono notifiche push per ogni nuova proposta pubblicata.
                 </p>
                 
                 <div className="space-y-3 pt-2">

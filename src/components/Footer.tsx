@@ -19,7 +19,7 @@ export const Footer: React.FC<FooterProps> = ({ isDark, onViewPrivacy, onViewCoo
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-center md:justify-start gap-2">
               <Vote className="w-5 h-5 text-blue-600" />
-              <span className={`font-display font-bold text-lg ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>Verdict</span>
+              <span className={`font-display font-semibold text-lg tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>easy decision</span>
             </div>
             <p className="text-xs max-w-xs leading-relaxed">
               Piattaforma professionale per la governance e le decisioni di team. Trasparenza e collaborazione al servizio del tuo business.
@@ -62,13 +62,14 @@ export const Footer: React.FC<FooterProps> = ({ isDark, onViewPrivacy, onViewCoo
           </div>
         </div>
 
-        <div className="mt-8 pt-8 border-t border-gray-100 dark:border-gray-900 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-[10px] font-medium uppercase tracking-wider">
-            © {new Date().getFullYear()} Verdict. Tutti i diritti riservati.
+        <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400">
+            © {new Date().getFullYear()} easy decision · Tutti i diritti riservati.
           </p>
-          <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Swiss Compliance Enforced</span>
+          <div className="flex items-center gap-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+            <span>Swiss Compliance</span>
+            <span aria-hidden="true" className="opacity-40">·</span>
+            <span>Standard Enforced</span>
           </div>
         </div>
       </div>
