@@ -7,7 +7,7 @@ export interface Toast {
 export type ToastType = Toast['type'];
 
 export interface DecisionOption {
-  id: string;
+  id: string | number;
   text: string;
   votes: number;
 }
@@ -16,6 +16,7 @@ export interface Creator {
   name: string;
   avatar: string;
   role: string;
+  uid?: string;
 }
 
 export interface Participant {
@@ -24,33 +25,33 @@ export interface Participant {
 }
 
 export interface Comment {
-  id: string;
+  id: string | number;
   author: string;
   avatar: string;
   role?: string;
   text: string;
-  timestamp: string; // ISO date or descriptive string
+  timestamp: string;
 }
 
 export type DecisionType = 'single' | 'multiple' | 'yes_no' | 'rating';
 export type DecisionAudience = 'public' | 'private' | 'restricted';
 
 export interface Decision {
-  id: string;
+  id: string | number;
   title: string;
   description: string;
   type: DecisionType;
   options: DecisionOption[];
   category: string;
-  deadline: string; // ISO date string
+  deadline: string;
   audience: DecisionAudience;
   creator: Creator;
-  votedOptionIds?: string[]; // IDs of options voted by user
-  ratingValue?: number; // User's given rating (1-5) if type is 'rating'
+  votedOptionIds?: (string | number)[];
+  ratingValue?: number;
   participants: Participant[];
   comments: Comment[];
   createdAt: string;
-  attachments?: string[]; // base64 images or files
+  attachments?: string[];
 }
 
 export interface AuditLog {
@@ -61,7 +62,7 @@ export interface AuditLog {
 }
 
 export interface TeamMember {
-  id: string;
+  id: string | number;
   name: string;
   surname: string;
   department: string;
@@ -71,4 +72,3 @@ export interface TeamMember {
   avatar: string;
   status: string;
 }
-

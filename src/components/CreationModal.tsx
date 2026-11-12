@@ -170,7 +170,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
       }));
 
     const newDecision: Decision = {
-      id: '', // Will be set by Firestore
+      id: '', // Will be set by the server (SQL)
       title: title.trim(),
       description: description.trim(),
       type: decisionType,

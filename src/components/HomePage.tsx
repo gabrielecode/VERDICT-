@@ -14,6 +14,8 @@ import {
   LayoutDashboard,
   MessageSquare
 } from 'lucide-react';
+import { Footer } from './Footer';
+import { LegalModal } from './LegalModal';
 
 interface HomePageProps {
   onLoginSuccess: () => void;
@@ -25,6 +27,15 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
   useEffect(() => {
     document.title = "Verdict | Software per decisioni di team: votazioni e sondaggi online";
   }, []);
+
+  const [legalModal, setLegalModal] = React.useState<{ isOpen: boolean; type: 'privacy' | 'cookie' }>({
+    isOpen: false,
+    type: 'privacy'
+  });
+
+  const openLegal = (type: 'privacy' | 'cookie') => {
+    setLegalModal({ isOpen: true, type });
+  };
 
   const faqs = [
     {
@@ -41,7 +52,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
     },
     {
       q: "Dove vengono salvati i dati?",
-      a: "Tutti i dati sono archiviati in modo sicuro su Firebase Cloud Firestore, garantendo la sincronizzazione in tempo reale tra tutti i membri del team su qualsiasi dispositivo."
+      a: "Tutti i dati sono archiviati in modo sicuro su un database relazionale Postgres (Cloud SQL), garantendo la persistenza e l'integrità dei dati per il tuo team."
     }
   ];
 
@@ -55,7 +66,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
             </div>
             <div>
               <span className="font-display font-bold text-xl tracking-tight block">Verdict</span>
-              <span className="text-xs font-bold text-blue-600 uppercase tracking-widest block">Decisioni Cloud</span>
+              <span className="text-xs font-bold text-blue-600 uppercase tracking-widest block">SQL Cloud</span>
             </div>
           </div>
 
@@ -208,11 +219,18 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
         </section>
       </main>
 
-      <footer className={`py-12 border-t text-center ${isDark ? 'bg-gray-950 border-gray-800' : 'bg-white border-gray-200'}`}>
-        <div className="max-w-6xl mx-auto px-6 text-xs text-gray-500 uppercase tracking-widest">
-            © 2026 Verdict Cloud. Powered by Firebase.
-        </div>
-      </footer>
+      <Footer 
+        isDark={isDark} 
+        onViewPrivacy={() => openLegal('privacy')}
+        onViewCookies={() => openLegal('cookie')}
+      />
+
+      <LegalModal 
+        isOpen={legalModal.isOpen}
+        onClose={() => setLegalModal({ ...legalModal, isOpen: false })}
+        type={legalModal.type}
+        isDark={isDark}
+      />
     </div>
   );
 };
