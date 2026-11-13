@@ -98,6 +98,22 @@ export default function App() {
   }, [isDark]);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get('checkout');
+    if (checkout === 'success') {
+      addToast('Pagamento ricevuto, attivazione in corso', 'success');
+    } else if (checkout === 'failed' || checkout === 'cancelled') {
+      addToast('Pagamento non completato', 'error');
+    }
+    if (params.has('checkout')) {
+      params.delete('checkout');
+      const newSearch = params.toString();
+      const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '') + window.location.hash;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!publicDecisionId) return;
     let unsubSnapshot: (() => void) | undefined;
     const unsubAuth = onAuthStateChanged(auth, (u) => {
@@ -722,6 +738,28 @@ export default function App() {
     }
   };
 
+  const handleCheckout = async () => {
+    if (!auth.currentUser || !userOrgId) return;
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${await auth.currentUser.getIdToken()}`
+        },
+        body: JSON.stringify({ orgId: userOrgId })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        addToast('Pagamento non disponibile, riprova', 'error');
+      }
+    } catch {
+      addToast('Pagamento non disponibile, riprova', 'error');
+    }
+  };
+
   const handlePublishDecision = async (newDecision: Omit<Decision, 'id'>) => {
     if (!user || !userOrgId || isTrialExpired) return;
     try {
@@ -1138,32 +1176,40 @@ export default function App() {
           </div>
         </header>
 
-        {isTrialActive && (
+        {(org?.plan === 'pro' || isTrialActive) && (
           <div className="bg-blue-50 dark:bg-blue-950/40 border-b border-blue-100 dark:border-blue-900/40 px-6 py-2.5 flex items-center justify-between text-xs text-blue-900 dark:text-blue-200">
             <div className="flex items-center gap-2 font-medium">
               <Sparkles className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              <span>Prova gratuita: {trialDaysRemaining} {trialDaysRemaining === 1 ? 'giorno rimasto' : 'giorni rimasti'}</span>
+              <span>
+                {org?.plan === 'pro'
+                  ? 'Piano Pro attivo'
+                  : `Prova gratuita: ${trialDaysRemaining} ${trialDaysRemaining === 1 ? 'giorno rimasto' : 'giorni rimasti'}`}
+              </span>
             </div>
-            <a
-              href="mailto:info@sititicino.ch"
-              className="font-bold text-blue-600 dark:text-blue-400 hover:underline shrink-0 ml-4"
-            >
-              Passa a Pro
-            </a>
+            {isOwner && org?.plan !== 'pro' && (
+              <button
+                onClick={handleCheckout}
+                className="font-bold text-blue-600 dark:text-blue-400 hover:underline shrink-0 ml-4 cursor-pointer"
+              >
+                Passa a Pro
+              </button>
+            )}
           </div>
         )}
 
-        {isTrialExpired && (
+        {isTrialExpired && org?.plan !== 'pro' && (
           <div className="bg-red-600 text-white px-6 py-2.5 flex items-center justify-between text-xs font-medium shadow-sm">
             <div className="flex items-center gap-2 font-bold">
               <span>Prova terminata</span>
             </div>
-            <a
-              href="mailto:info@sititicino.ch"
-              className="bg-white text-red-600 font-bold px-3 py-1 rounded-lg hover:bg-red-50 transition shrink-0 ml-4 shadow-xs"
-            >
-              Passa a Pro
-            </a>
+            {isOwner && (
+              <button
+                onClick={handleCheckout}
+                className="bg-white text-red-600 font-bold px-3 py-1 rounded-lg hover:bg-red-50 transition shrink-0 ml-4 shadow-xs cursor-pointer"
+              >
+                Passa a Pro
+              </button>
+            )}
           </div>
         )}
 
