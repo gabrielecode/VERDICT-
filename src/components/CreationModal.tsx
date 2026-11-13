@@ -50,8 +50,8 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
     const files = e.target.files;
     if (files) {
       Array.from(files).forEach((file: File) => {
-        if (file.size > 1048576 || attachments.length >= 3) {
-          alert('File troppo grande (max 1MB) o limite allegati raggiunto');
+        if (file.size > 256000 || attachments.length >= 3) {
+          alert('File troppo grande (max 250KB) o limite allegati raggiunto');
           return;
         }
         const reader = new FileReader();

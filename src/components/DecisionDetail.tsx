@@ -14,8 +14,8 @@ import {
 import { Decision } from '../types';
 import { getTimeRemaining, getCategoryStyles, formatDate, TimeRemaining } from '../utils';
 import { generateDecisionSummaryPDF } from '../utils/pdfGenerator';
-import { auth, db } from '../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 interface DecisionDetailProps {
   decision: Decision;
@@ -56,21 +56,31 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
   }, [decision.deadline]);
 
   useEffect(() => {
-    if (!auth.currentUser) return;
-    const voteRef = doc(db, 'decisions', decision.id, 'votes', auth.currentUser.uid);
-    getDoc(voteRef).then(snap => {
-      if (snap.exists()) {
-        const data = snap.data();
-        setUserVotedOptions(data.optionIds || []);
-        setUserRating(data.ratingValue);
-        setHasVoted(true);
-      } else {
-        setUserVotedOptions([]);
-        setUserRating(undefined);
-        setHasVoted(false);
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    const votePath = `decisions/${decision.id}/votes/${uid}`;
+    const voteRef = doc(db, 'decisions', decision.id, 'votes', uid);
+    const unsubscribe = onSnapshot(
+      voteRef,
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          setUserVotedOptions(data.optionIds || []);
+          setUserRating(data.ratingValue);
+          setHasVoted(true);
+        } else {
+          setUserVotedOptions([]);
+          setUserRating(undefined);
+          setHasVoted(false);
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, votePath);
       }
-    }).catch(() => {});
-  }, [decision.id]);
+    );
+
+    return () => unsubscribe();
+  }, [decision.id, auth.currentUser?.uid]);
 
   const totalVotes = decision.options.reduce((sum, opt) => sum + opt.votes, 0);
   const isExpired = timeLeft.status === 'expired';
@@ -165,6 +175,8 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
         setUserVotedOptions([]);
         setUserRating(undefined);
         setPendingRating(chosenRating);
+      } else {
+        setHasVoted(true);
       }
     } else if (selectedOptions.length > 0) {
       const votedOpts = [...selectedOptions];
@@ -176,6 +188,8 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
         setHasVoted(false);
         setUserVotedOptions([]);
         setSelectedOptions(votedOpts);
+      } else {
+        setHasVoted(true);
       }
     }
   };
