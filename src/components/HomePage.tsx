@@ -178,6 +178,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
   const [previewSelection, setPreviewSelection] = useState<string[]>(['yn-1']);
   const [previewRating, setPreviewRating] = useState<number>(4);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+  const [workflowImgError, setWorkflowImgError] = useState(false);
 
   const handlePreviewModeChange = (mode: PreviewMode) => {
     setPreviewMode(mode);
@@ -653,17 +654,62 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
 
         {/* Come funziona (3 step) */}
         <section id="come-funziona" className="max-w-6xl mx-auto px-6 py-20 md:py-24">
-          <div className="max-w-2xl space-y-3 mb-14">
-            <h2
-              className={`text-2xl md:text-4xl font-display font-bold tracking-tight [text-wrap:balance] ${
-                isDark ? 'text-white' : 'text-slate-950'
-              }`}
-            >
-              Come funziona in 3 passaggi
-            </h2>
-            <p className={`text-base ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Dall’idea al verdetto condiviso in meno di un minuto, senza installazioni né onboarding complessi.
-            </p>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center mb-12">
+            <div className="lg:col-span-5 space-y-4">
+              <h2
+                className={`text-2xl md:text-4xl font-display font-bold tracking-tight [text-wrap:balance] ${
+                  isDark ? 'text-white' : 'text-slate-950'
+                }`}
+              >
+                Come funziona in 3 passaggi
+              </h2>
+              <p className={`text-base leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                Dall’idea al verdetto condiviso in meno di un minuto, senza installazioni né onboarding complessi.
+              </p>
+              <p
+                className={`text-xs font-medium pt-1 ${
+                  isDark ? 'text-slate-400' : 'text-slate-500'
+                }`}
+              >
+                Proposta con allegati · Voto senza account · Risultati live ed export
+              </p>
+            </div>
+
+            <div className="lg:col-span-7">
+              <div
+                className={`aspect-[16/9] rounded-2xl overflow-hidden border ${
+                  isDark ? 'border-gray-800 bg-gray-900' : 'border-slate-200 bg-[#ece9e2]'
+                }`}
+              >
+                {!workflowImgError ? (
+                  <img
+                    src="/assets/aistudio/SaaS_UI_decision_dashboard_illus__5c103c16_7f8bf637.jpg"
+                    alt="Flusso decisionale Easy Decision: dalla proposta al voto, alla discussione e approvazione fino ai risultati in tempo reale"
+                    referrerPolicy="no-referrer"
+                    loading="lazy"
+                    onError={() => setWorkflowImgError(true)}
+                    className="w-full h-full object-cover object-right dark:brightness-95"
+                  />
+                ) : (
+                  <div
+                    className={`w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-3 ${
+                      isDark ? 'bg-gray-900 text-slate-300' : 'bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4 text-blue-600 dark:text-blue-400">
+                      <FileText className="w-7 h-7" aria-hidden="true" />
+                      <ArrowRight className="w-4 h-4 text-slate-400" aria-hidden="true" />
+                      <Share2 className="w-7 h-7" aria-hidden="true" />
+                      <ArrowRight className="w-4 h-4 text-slate-400" aria-hidden="true" />
+                      <BarChart3 className="w-7 h-7" aria-hidden="true" />
+                    </div>
+                    <p className="text-sm font-display font-bold">
+                      Proposta → Voto &amp; Discussione → Risultati live
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
