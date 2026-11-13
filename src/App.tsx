@@ -88,6 +88,15 @@ export default function App() {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
+  const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: 'privacy' | 'cookie' }>({
+    isOpen: false,
+    type: 'privacy'
+  });
+
+  const openLegal = (type: 'privacy' | 'cookie') => {
+    setLegalModal({ isOpen: true, type });
+  };
+
   const [isDark, setIsDark] = useState(() => {
     return localStorage.getItem('easy_decision_dark_mode_v1') === 'true';
   });
@@ -341,8 +350,15 @@ export default function App() {
 
         <Footer 
           isDark={isDark} 
-          onViewPrivacy={() => {}}
-          onViewCookies={() => {}}
+          onViewPrivacy={() => openLegal('privacy')}
+          onViewCookies={() => openLegal('cookie')}
+        />
+
+        <LegalModal 
+          isOpen={legalModal.isOpen}
+          onClose={() => setLegalModal({ ...legalModal, isOpen: false })}
+          type={legalModal.type}
+          isDark={isDark}
         />
       </div>
     );
@@ -668,14 +684,6 @@ export default function App() {
   const [activeMenuTab, setActiveMenuTab] = useState<'dashboard' | 'archived' | 'admin'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: 'privacy' | 'cookie' }>({
-    isOpen: false,
-    type: 'privacy'
-  });
-
-  const openLegal = (type: 'privacy' | 'cookie') => {
-    setLegalModal({ isOpen: true, type });
-  };
 
 
 

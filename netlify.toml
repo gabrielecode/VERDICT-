@@ -6,18 +6,8 @@
   node_bundler = "esbuild"
 
 [[redirects]]
-  from = "/api/vote"
-  to = "/.netlify/functions/vote"
-  status = 200
-
-[[redirects]]
-  from = "/api/checkout"
-  to = "/.netlify/functions/checkout"
-  status = 200
-
-[[redirects]]
-  from = "/api/payrexx-webhook"
-  to = "/.netlify/functions/payrexx-webhook"
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
   status = 200
 
 [[redirects]]

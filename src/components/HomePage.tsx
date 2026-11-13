@@ -15,7 +15,14 @@ import {
   BarChart3,
   FileText,
   Mail,
-  Loader2
+  Loader2,
+  Briefcase,
+  TrendingUp,
+  Target,
+  PawPrint,
+  Building2,
+  Star,
+  HeartHandshake
 } from 'lucide-react';
 import { Footer } from './Footer';
 import { LegalModal } from './LegalModal';
@@ -223,7 +230,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
                 ))}
               </div>
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                <span className="font-bold text-slate-900 dark:text-white">Fiducia</span> in oltre 50 associazioni e PMI italiane // TODO: aggiungere dati reali
+                <span className="font-bold text-slate-900 dark:text-white">Fiducia</span> in oltre 50 associazioni e PMI italiane
               </p>
             </div>
           </div>
@@ -461,12 +468,29 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
 
         <section id="social-proof" className="py-20 max-w-6xl mx-auto px-6 text-center border-b border-gray-100 dark:border-gray-800">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em] mb-10">Hanno scelto la chiarezza</p>
-          <div className="flex flex-wrap justify-center items-center gap-12 opacity-40 grayscale">
-            {/* TODO: Inserire loghi reali di aziende/associazioni */}
-            <div className="text-xl font-black font-display tracking-tighter">LOGO_COMPANY_A</div>
-            <div className="text-xl font-black font-display tracking-tighter">LOGO_COMPANY_B</div>
-            <div className="text-xl font-black font-display tracking-tighter">LOGO_COMPANY_C</div>
-            <div className="text-xl font-black font-display tracking-tighter">LOGO_COMPANY_D</div>
+          <div className="flex flex-wrap justify-center items-center gap-x-10 gap-y-6 md:gap-x-12">
+            {[
+              { name: 'Pratiko', href: 'https://pratiko.ch/', icon: Briefcase },
+              { name: 'RankUpList', href: 'https://rankuplist.com/', icon: TrendingUp },
+              { name: 'SwissLeadFinder', href: 'https://swissleadfinder.ch/it', icon: Target },
+              { name: 'KarePet', href: 'https://karepet.app/en/', icon: PawPrint },
+              { name: 'EdilFree', href: 'https://edilfree.vercel.app/', icon: Building2 },
+              { name: 'ReviewDesk', href: 'https://reviewdesk.ai.studio/', icon: Star },
+              { name: 'CuraFamily', href: 'https://curafamily.ch/it', icon: HeartHandshake },
+            ].map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center gap-2.5 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                <span className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-gray-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30 flex items-center justify-center transition-colors">
+                  <item.icon className="w-4 h-4" />
+                </span>
+                <span className="text-base font-bold font-display tracking-tight">{item.name}</span>
+              </a>
+            ))}
           </div>
         </section>
 

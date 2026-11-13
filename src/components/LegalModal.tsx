@@ -75,7 +75,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ isOpen, onClose, type, i
                   <section>
                     <h3 className="font-bold text-base mb-2">4. Trasferimento e Sicurezza</h3>
                     <p className="text-gray-500 dark:text-gray-400">
-                      I dati sono memorizzati su infrastrutture cloud sicure gestite da Google (Cloud SQL). Non vendiamo né cediamo i tuoi dati a terzi per scopi commerciali.
+                      I dati sono memorizzati su infrastrutture cloud sicure gestite da Google (Firebase Firestore). Non vendiamo né cediamo i tuoi dati a terzi per scopi commerciali.
                     </p>
                   </section>
                   <section>

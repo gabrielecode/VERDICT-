@@ -4,9 +4,11 @@ import { getFirestore } from 'firebase-admin/firestore';
 
 const app =
   getApps()[0] ??
-  initializeApp({
-    credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT as string)),
-  });
+  (process.env.FIREBASE_SERVICE_ACCOUNT
+    ? initializeApp({
+        credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
+      })
+    : initializeApp());
 const db = getFirestore(app, process.env.FIREBASE_DATABASE_ID || '(default)');
 
 class HttpError extends Error {

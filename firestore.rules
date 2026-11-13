@@ -40,7 +40,8 @@ service cloud.firestore {
 
     match /inviteCodes/{code} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow create: if isOrgOwner(incoming().orgId);
+      allow update, delete: if isOrgOwner(existing().orgId);
     }
 
     match /orgs/{orgId} {
