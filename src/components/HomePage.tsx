@@ -607,39 +607,46 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
             >
               Scelto da team, agenzie e associazioni tra Svizzera e Italia
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-6">
-              {PARTNERS.map((partner) => (
-                <a
-                  key={partner.href}
-                  href={partner.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-lg py-1"
-                >
-                  <span
-                    className={`w-9 h-9 rounded-lg overflow-hidden shrink-0 flex items-center justify-center ${
-                      partner.fullBleed
-                        ? ''
-                        : `bg-white border border-slate-200 dark:border-slate-700 ${partner.padClass}`
-                    }`}
-                  >
-                    <img
-                      src={partner.logo}
-                      alt={`${partner.name} logo`}
-                      referrerPolicy="no-referrer"
-                      loading="lazy"
-                      className={`w-full h-full ${partner.fullBleed ? 'object-cover' : 'object-contain'}`}
-                    />
-                  </span>
-                  <span
-                    className={`text-sm font-display font-bold tracking-tight transition-colors ${
-                      isDark ? 'text-slate-200 group-hover:text-white' : 'text-slate-700 group-hover:text-slate-950'
-                    }`}
-                  >
-                    {partner.name}
-                  </span>
-                </a>
-              ))}
+            <div className="logo-carousel-wrapper relative overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]">
+              <div className="animate-logo-carousel items-center py-1">
+                {[0, 1].map((copyIdx) =>
+                  PARTNERS.map((partner) => (
+                    <a
+                      key={`${copyIdx}-${partner.href}`}
+                      href={partner.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-hidden={copyIdx === 1 ? true : undefined}
+                      tabIndex={copyIdx === 1 ? -1 : undefined}
+                      className={`${
+                        copyIdx === 1 ? 'logo-carousel-duplicate ' : ''
+                      }group inline-flex items-center gap-2.5 shrink-0 mr-10 md:mr-14 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-lg py-1`}
+                    >
+                      <span
+                        className={`w-9 h-9 rounded-lg overflow-hidden shrink-0 flex items-center justify-center ${
+                          partner.fullBleed
+                            ? ''
+                            : `bg-white border border-slate-200 dark:border-slate-700 ${partner.padClass}`
+                        }`}
+                      >
+                        <img
+                          src={partner.logo}
+                          alt={copyIdx === 1 ? '' : `${partner.name} logo`}
+                          referrerPolicy="no-referrer"
+                          className={`w-full h-full ${partner.fullBleed ? 'object-cover' : 'object-contain'}`}
+                        />
+                      </span>
+                      <span
+                        className={`text-sm font-display font-bold tracking-tight whitespace-nowrap transition-colors ${
+                          isDark ? 'text-slate-200 group-hover:text-white' : 'text-slate-700 group-hover:text-slate-950'
+                        }`}
+                      >
+                        {partner.name}
+                      </span>
+                    </a>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </section>
