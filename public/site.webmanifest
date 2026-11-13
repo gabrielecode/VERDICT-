@@ -1,8 +1,10 @@
 {
+  "id": "/",
   "name": "Easy Decision",
-  "short_name": "Easy Decision",
+  "short_name": "EasyDecision",
   "description": "Crea votazioni e sondaggi di team in 60 secondi: chi vota non deve registrarsi.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2563eb",
@@ -17,7 +19,7 @@
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }

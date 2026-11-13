@@ -58,6 +58,8 @@ import {
 } from './lib/firebase';
 import { submitVote, VoteError } from './lib/voting';
 import { AuthDomainModal } from './components/AuthDomainModal';
+import { PWAInstallButton } from './components/PWAInstallButton';
+import { OfflineIndicator } from './components/OfflineIndicator';
 
 const CreationModal = lazy(() => import('./components/CreationModal').then(m => ({ default: m.CreationModal })));
 const DecisionDetail = lazy(() => import('./components/DecisionDetail').then(m => ({ default: m.DecisionDetail })));
@@ -1084,6 +1086,7 @@ export default function App() {
     return (
       <div className={`min-h-screen ${isDark ? 'dark' : ''}`}>
         <ToastContainer toasts={toasts} removeToast={removeToast} />
+        <OfflineIndicator />
         <HomePage onLoginSuccess={handleLogin} isDark={isDark} toggleDarkMode={() => setIsDark(!isDark)} addToast={addToast} />
         <AuthDomainModal
           isOpen={showDomainModal}
@@ -1262,7 +1265,7 @@ export default function App() {
           </nav>
         </div>
 
-        <div className={`p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 space-y-3.5 ${isSidebarOpen ? 'block' : 'hidden md:block'}`}>
+        <div className={`p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 space-y-2.5 ${isSidebarOpen ? 'block' : 'hidden md:block'}`}>
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="w-full flex items-center justify-center gap-2 font-bold text-xs py-3 rounded-xl transition duration-150 shadow-sm shadow-blue-100 bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
@@ -1270,6 +1273,8 @@ export default function App() {
             <Plus className="w-4 h-4 stroke-[2.5]" />
             Nuova Proposta
           </button>
+
+          <PWAInstallButton variant="sidebar" isDark={isDark} />
 
           <div className="flex items-center gap-2.5 px-2">
             <img
@@ -1304,10 +1309,14 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className="md:hidden">
+              <PWAInstallButton variant="compact" isDark={isDark} />
+            </div>
             <button
               onClick={() => setIsDark(!isDark)}
-              className="md:hidden p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900 rounded-xl transition"
+              aria-label={isDark ? 'Passa a Light Mode' : 'Passa a Dark Mode'}
+              className="md:hidden p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900 rounded-xl transition cursor-pointer"
             >
               {isDark ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5" />}
             </button>
@@ -1547,6 +1556,7 @@ export default function App() {
           <span className="text-[10px] font-bold">Team</span>
         </button>
       </nav>
+      <OfflineIndicator />
       <AuthDomainModal
         isOpen={showDomainModal}
         onClose={() => setShowDomainModal(false)}
