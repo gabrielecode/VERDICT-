@@ -30,6 +30,7 @@ import {
   X
 } from 'lucide-react';
 import { Footer } from './Footer';
+import { ConnectCreateSection } from './ConnectCreateSection';
 import { LegalModal } from './LegalModal';
 import { sendEmailLink } from '../lib/firebase';
 import { ToastType } from '../types';
@@ -1417,6 +1418,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
             </div>
           </div>
         </section>
+
+        {/* Connect & Create Section */}
+        <ConnectCreateSection isDark={isDark} />
       </main>
 
       <Footer
