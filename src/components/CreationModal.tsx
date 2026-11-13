@@ -44,14 +44,16 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
   const [resultsVisibility, setResultsVisibility] = useState<'always' | 'after_vote' | 'closed'>('always');
 
   const [attachments, setAttachments] = useState<string[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
+    setUploadError(null);
     if (files) {
       Array.from(files).forEach((file: File) => {
         if (file.size > 256000 || attachments.length >= 3) {
-          alert('File troppo grande (max 250KB) o limite allegati raggiunto');
+          setUploadError('File troppo grande (max 250 KB) o limite di 3 allegati raggiunto.');
           return;
         }
         const reader = new FileReader();
@@ -66,6 +68,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
         reader.readAsDataURL(file);
       });
     }
+    e.target.value = '';
   };
 
   const handleRemoveAttachment = (index: number) => {
@@ -333,6 +336,12 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                       className="hidden"
                     />
                   </div>
+
+                  {uploadError && (
+                    <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 mb-2">
+                      {uploadError}
+                    </p>
+                  )}
 
                   {attachments.length > 0 && (
                     <div className="grid grid-cols-3 gap-2.5 pt-1">

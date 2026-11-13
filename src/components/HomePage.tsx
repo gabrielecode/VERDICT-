@@ -161,7 +161,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
               </span>
               <span className="text-[11px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider">
-                Ora disponibile per team remoti
+                Accesso Anticipato Gratuito – tutte le funzionalità incluse
               </span>
             </div>
             
@@ -617,6 +617,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
 
         <section id="cta-final" className="py-24 px-6">
           <div className={`max-w-4xl mx-auto rounded-[3rem] p-12 md:p-20 text-center space-y-10 border ${isDark ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-900 border-slate-800 text-white shadow-2xl shadow-slate-900/20'}`}>
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-bold tracking-wide">
+              <span>Accesso Anticipato Gratuito – tutte le funzionalità incluse</span>
+            </div>
             <h2 className="text-4xl md:text-5xl font-display font-bold tracking-tight leading-tight">
               Pronti a decidere in pochi minuti?
             </h2>

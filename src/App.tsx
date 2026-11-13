@@ -251,6 +251,8 @@ export default function App() {
       const optionIdsToSend =
         isRating && numericRating !== undefined
           ? [String(publicDecision.options[numericRating - 1]?.id ?? numericRating - 1)]
+          : publicDecision.type === 'single' || publicDecision.type === 'yes_no'
+          ? publicSelectedOptions.slice(0, 1)
           : publicSelectedOptions;
 
       setPublicSubmittingVote(true);
@@ -724,8 +726,7 @@ export default function App() {
         ownerUid: user.uid,
         createdAt: new Date().toISOString(),
         inviteCode: inviteCode,
-        plan: 'trial',
-        trialEndsAt: Timestamp.fromDate(new Date(Date.now() + 14 * 86400000))
+        plan: 'free'
       });
 
       await setDoc(doc(db, 'inviteCodes', inviteCode), {
@@ -847,34 +848,6 @@ export default function App() {
   const [activeMenuTab, setActiveMenuTab] = useState<'dashboard' | 'archived' | 'admin'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-
-
-
-  const { isTrialActive, isTrialExpired, trialDaysRemaining } = useMemo(() => {
-    if (!org) {
-      return { isTrialActive: false, isTrialExpired: false, trialDaysRemaining: 0 };
-    }
-    const now = Date.now();
-    const trialEndsAtMs = org.trialEndsAt?.toMillis
-      ? org.trialEndsAt.toMillis()
-      : (org.trialEndsAt as any)?.seconds
-      ? (org!.trialEndsAt as any).seconds * 1000
-      : org.trialEndsAt instanceof Date
-      ? org.trialEndsAt.getTime()
-      : typeof org.trialEndsAt === 'string'
-      ? new Date(org.trialEndsAt).getTime()
-      : 0;
-
-    const isTrialActive = Boolean(org.plan === 'trial' && trialEndsAtMs > now);
-    const trialDaysRemaining = Math.max(1, Math.ceil((trialEndsAtMs - now) / 86400000));
-    const isTrialExpired = Boolean(
-      org.plan !== 'pro' &&
-      (org.plan === 'expired' || (org.plan === 'trial' && trialEndsAtMs <= now) || (trialEndsAtMs > 0 && trialEndsAtMs <= now))
-    );
-
-    return { isTrialActive, isTrialExpired, trialDaysRemaining };
-  }, [org]);
-
   const activeDecision = useMemo(() => {
     return decisions.find(d => d.id === selectedDecisionId) || null;
   }, [decisions, selectedDecisionId]);
@@ -909,33 +882,8 @@ export default function App() {
     }
   };
 
-  const handleCheckout = async () => {
-    if (!auth.currentUser || !org?.id) {
-      addToast('Piano Pro in arrivo a breve! Contattaci per l\'accesso anticipato.', 'info');
-      return;
-    }
-    try {
-      const response = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${await auth.currentUser.getIdToken()}`
-        },
-        body: JSON.stringify({ orgId: org.id })
-      });
-      const data = await response.json().catch(() => ({}));
-      if (response.ok && typeof data.url === 'string' && data.url) {
-        window.location.assign(data.url);
-        return;
-      }
-      addToast('Piano Pro in arrivo a breve! Contattaci per l\'accesso anticipato.', 'info');
-    } catch {
-      addToast('Piano Pro in arrivo a breve! Contattaci per l\'accesso anticipato.', 'info');
-    }
-  };
-
   const handlePublishDecision = async (newDecision: Omit<Decision, 'id'>) => {
-    if (!user || !userOrgId || isTrialExpired) return;
+    if (!user || !userOrgId) return;
     try {
       const deadlineDate = new Date(newDecision.deadline);
       await addDoc(collection(db, 'decisions'), {
@@ -1279,16 +1227,8 @@ export default function App() {
 
         <div className={`p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 space-y-3.5 ${isSidebarOpen ? 'block' : 'hidden md:block'}`}>
           <button
-            disabled={isTrialExpired}
-            onClick={() => {
-              if (!isTrialExpired) setIsCreateModalOpen(true);
-            }}
-            title={isTrialExpired ? 'Prova terminata - Passa a Pro' : undefined}
-            className={`w-full flex items-center justify-center gap-2 font-bold text-xs py-3 rounded-xl transition duration-150 shadow-sm shadow-blue-100 ${
-              isTrialExpired
-                ? 'bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
-            }`}
+            onClick={() => setIsCreateModalOpen(true)}
+            className="w-full flex items-center justify-center gap-2 font-bold text-xs py-3 rounded-xl transition duration-150 shadow-sm shadow-blue-100 bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
             Nuova Proposta
@@ -1344,42 +1284,12 @@ export default function App() {
           </div>
         </header>
 
-        {(org?.plan === 'pro' || isTrialActive) && (
-          <div className="bg-blue-50 dark:bg-blue-950/40 border-b border-blue-100 dark:border-blue-900/40 px-6 py-2.5 flex items-center justify-between text-xs text-blue-900 dark:text-blue-200">
-            <div className="flex items-center gap-2 font-medium">
-              <Sparkles className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              <span>
-                {org?.plan === 'pro'
-                  ? 'Piano Pro attivo'
-                  : `Prova gratuita: ${trialDaysRemaining} ${trialDaysRemaining === 1 ? 'giorno rimasto' : 'giorni rimasti'}`}
-              </span>
-            </div>
-            {isOwner && org?.plan !== 'pro' && (
-              <button
-                onClick={handleCheckout}
-                className="font-bold text-blue-600 dark:text-blue-400 hover:underline shrink-0 ml-4 cursor-pointer"
-              >
-                Passa a Pro
-              </button>
-            )}
+        <div className="bg-blue-50 dark:bg-blue-950/40 border-b border-blue-100 dark:border-blue-900/40 px-6 py-2.5 flex items-center justify-between text-xs text-blue-900 dark:text-blue-200">
+          <div className="flex items-center gap-2 font-semibold">
+            <Sparkles className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <span>Accesso Anticipato Gratuito – tutte le funzionalità incluse</span>
           </div>
-        )}
-
-        {isTrialExpired && org?.plan !== 'pro' && (
-          <div className="bg-red-600 text-white px-6 py-2.5 flex items-center justify-between text-xs font-medium shadow-sm">
-            <div className="flex items-center gap-2 font-bold">
-              <span>Prova terminata</span>
-            </div>
-            {isOwner && (
-              <button
-                onClick={handleCheckout}
-                className="bg-white text-red-600 font-bold px-3 py-1 rounded-lg hover:bg-red-50 transition shrink-0 ml-4 shadow-xs cursor-pointer"
-              >
-                Passa a Pro
-              </button>
-            )}
-          </div>
-        )}
+        </div>
 
         <div className="flex-1 px-6 py-8 max-w-5xl w-full mx-auto">
           {loadingDecisions && decisions.length === 0 ? (
@@ -1506,10 +1416,10 @@ export default function App() {
       />
 
       <AnimatePresence>
-        {isCreateModalOpen && !isTrialExpired && (
+        {isCreateModalOpen && (
           <Suspense fallback={null}>
             <CreationModal
-              isOpen={isCreateModalOpen && !isTrialExpired}
+              isOpen={isCreateModalOpen}
               onClose={() => setIsCreateModalOpen(false)}
               onPublish={handlePublishDecision}
             />
@@ -1579,16 +1489,8 @@ export default function App() {
         </button>
         <div className="flex items-center justify-center -mt-6">
           <button
-            disabled={isTrialExpired}
-            onClick={() => {
-              if (!isTrialExpired) setIsCreateModalOpen(true);
-            }}
-            title={isTrialExpired ? 'Prova terminata - Passa a Pro' : undefined}
-            className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg border-4 border-white dark:border-gray-950 ${
-              isTrialExpired
-                ? 'bg-gray-400 dark:bg-gray-700 cursor-not-allowed opacity-60'
-                : 'bg-blue-600 cursor-pointer'
-            }`}
+            onClick={() => setIsCreateModalOpen(true)}
+            className="w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg border-4 border-white dark:border-gray-950 bg-blue-600 cursor-pointer"
           >
             <Plus className="w-6 h-6 stroke-[3]" />
           </button>

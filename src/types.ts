@@ -95,7 +95,7 @@ export interface Organization {
   ownerUid: string;
   createdAt: string;
   inviteCode: string;
-  plan?: 'trial' | 'pro' | 'expired';
+  plan?: 'free' | 'trial' | 'pro' | 'expired';
   trialEndsAt?: Timestamp;
 }
 

@@ -46,6 +46,7 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
   const [finalDate, setFinalDate] = useState(decision.finalDecision?.date || new Date().toISOString().split('T')[0]);
   const [isEditingFinal, setIsEditingFinal] = useState(false);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [isSubmittingVote, setIsSubmittingVote] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -65,10 +66,10 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
       (snap) => {
         if (snap.exists()) {
           const data = snap.data();
-          setUserVotedOptions(data.optionIds || []);
+          setUserVotedOptions(Array.isArray(data.optionIds) ? data.optionIds.map(String) : []);
           setUserRating(data.ratingValue);
           setHasVoted(true);
-        } else {
+        } else if (!isSubmittingVote) {
           setUserVotedOptions([]);
           setUserRating(undefined);
           setHasVoted(false);
@@ -80,7 +81,7 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
     );
 
     return () => unsubscribe();
-  }, [decision.id, auth.currentUser?.uid]);
+  }, [decision.id, auth.currentUser?.uid, isSubmittingVote]);
 
   const totalVotes = decision.options.reduce((sum, opt) => sum + (Number(opt.votes) || 0), 0);
   const isExpired = timeLeft.status === 'expired';
@@ -159,37 +160,50 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
   };
 
   const handleConfirmVote = async () => {
-    if (isExpired || hasVoted) return;
+    if (isExpired || hasVoted || isSubmittingVote) return;
 
     if (decision.type === 'rating' && pendingRating !== null) {
       const ratingOptId = String(decision.options[pendingRating - 1]?.id ?? pendingRating - 1);
       const votedOpts = [ratingOptId];
       const chosenRating = pendingRating;
+      setIsSubmittingVote(true);
       setHasVoted(true);
       setUserVotedOptions(votedOpts);
       setUserRating(chosenRating);
       setPendingRating(null);
-      const res = await onVote(decision.id, votedOpts, chosenRating);
-      if (res === false) {
-        setHasVoted(false);
-        setUserVotedOptions([]);
-        setUserRating(undefined);
-        setPendingRating(chosenRating);
-      } else {
-        setHasVoted(true);
+      try {
+        const res = await onVote(decision.id, votedOpts, chosenRating);
+        if (res === false) {
+          setHasVoted(false);
+          setUserVotedOptions([]);
+          setUserRating(undefined);
+          setPendingRating(chosenRating);
+        } else {
+          setHasVoted(true);
+        }
+      } finally {
+        setIsSubmittingVote(false);
       }
     } else if (selectedOptions.length > 0) {
-      const votedOpts = [...selectedOptions];
+      const votedOpts =
+        decision.type === 'single' || decision.type === 'yes_no'
+          ? selectedOptions.slice(0, 1)
+          : [...selectedOptions];
+      setIsSubmittingVote(true);
       setHasVoted(true);
       setUserVotedOptions(votedOpts);
       setSelectedOptions([]);
-      const res = await onVote(decision.id, votedOpts);
-      if (res === false) {
-        setHasVoted(false);
-        setUserVotedOptions([]);
-        setSelectedOptions(votedOpts);
-      } else {
-        setHasVoted(true);
+      try {
+        const res = await onVote(decision.id, votedOpts);
+        if (res === false) {
+          setHasVoted(false);
+          setUserVotedOptions([]);
+          setSelectedOptions(votedOpts);
+        } else {
+          setHasVoted(true);
+        }
+      } finally {
+        setIsSubmittingVote(false);
       }
     }
   };
