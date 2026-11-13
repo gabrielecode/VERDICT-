@@ -107,22 +107,6 @@ export default function App() {
   }, [isDark]);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const checkout = params.get('checkout');
-    if (checkout === 'success') {
-      addToast('Pagamento ricevuto, attivazione in corso', 'success');
-    } else if (checkout === 'failed' || checkout === 'cancelled') {
-      addToast('Pagamento non completato', 'error');
-    }
-    if (params.has('checkout')) {
-      params.delete('checkout');
-      const newSearch = params.toString();
-      const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '') + window.location.hash;
-      window.history.replaceState({}, '', newUrl);
-    }
-  }, []);
-
-  useEffect(() => {
     if (!publicDecisionId) return;
     let unsubSnapshot: (() => void) | undefined;
     const unsubAuth = onAuthStateChanged(auth, (u) => {
@@ -746,26 +730,8 @@ export default function App() {
     }
   };
 
-  const handleCheckout = async () => {
-    if (!auth.currentUser || !userOrgId) return;
-    try {
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${await auth.currentUser.getIdToken()}`
-        },
-        body: JSON.stringify({ orgId: userOrgId })
-      });
-      const data = await res.json().catch(() => ({}));
-      if (data?.url) {
-        window.location.href = data.url;
-      } else {
-        addToast('Pagamento non disponibile, riprova', 'error');
-      }
-    } catch {
-      addToast('Pagamento non disponibile, riprova', 'error');
-    }
+  const handleCheckout = () => {
+    addToast('Piano Pro in arrivo a breve! Contattaci per l\'accesso anticipato.', 'info');
   };
 
   const handlePublishDecision = async (newDecision: Omit<Decision, 'id'>) => {
