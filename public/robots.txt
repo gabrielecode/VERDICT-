@@ -1,3 +1,9 @@
 User-agent: *
 Allow: /
+Disallow: /v/
+
+User-agent: Bingbot
+Allow: /
+Disallow: /v/
+
 Sitemap: https://easydecision.vercel.app/sitemap.xml

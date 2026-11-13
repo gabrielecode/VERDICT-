@@ -146,16 +146,21 @@ export interface FirestoreErrorInfo {
 }
 
 export function getReadableErrorMessage(error: unknown): string {
-  const msg = error instanceof Error ? error.message : String(error);
+  const errObj = error as { error?: unknown; message?: unknown } | null | undefined;
+  const msg =
+    (typeof errObj?.error === 'string' && errObj.error.trim()) ||
+    (error instanceof Error && error.message) ||
+    (typeof errObj?.message === 'string' && errObj.message.trim()) ||
+    String(error);
   const lower = msg.toLowerCase();
 
   if (lower.includes('permission-denied') || lower.includes('permission_denied') || lower.includes('insufficient permissions')) {
-    return 'Accesso negato: non disponi dei permessi necessari per questa operazione.';
+    return `Accesso negato: ${msg}`;
   }
   if (lower.includes('offline') || lower.includes('unavailable') || lower.includes('failed-precondition') || lower.includes('network')) {
-    return 'Connessione assente: verifica la tua rete e riprova.';
+    return `Connessione assente: ${msg}`;
   }
-  return 'Si è verificato un errore durante l\'operazione. Riprova più tardi.';
+  return msg;
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): string {

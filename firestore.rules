@@ -30,6 +30,11 @@ service cloud.firestore {
       return d.data.keys().hasAll(['isAnonymous']) && d.data.isAnonymous == true;
     }
 
+    function isDecisionActive(data) {
+      return (!('status' in data) || data.status == 'active') &&
+        (!('deadlineTs' in data) || request.time < data.deadlineTs);
+    }
+
     function incoming() {
       return request.resource.data;
     }
@@ -58,6 +63,66 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/inviteCodes/$(code)) &&
         get(/databases/$(database)/documents/inviteCodes/$(code)).data.orgId == orgId &&
         get(/databases/$(database)/documents/orgs/$(orgId)).data.inviteCode == code;
+    }
+
+    function isValidVoteData(data, decisionData) {
+      return data.keys().hasAll(['createdAt']) &&
+        data.keys().hasOnly(['userId', 'voterName', 'optionIds', 'rating', 'createdAt']) &&
+        (!('userId' in data) || data.userId == request.auth.uid) &&
+        data.createdAt == request.time &&
+        (!('voterName' in data) || (data.voterName is string && data.voterName.size() > 0 && data.voterName.size() <= 60)) &&
+        (
+          (
+            decisionData.type == 'rating' &&
+            !('optionIds' in data) &&
+            data.keys().hasAll(['rating']) &&
+            data.rating is int &&
+            data.rating >= 1 &&
+            data.rating <= 5
+          ) ||
+          (
+            decisionData.type in ['single', 'multiple', 'yes_no'] &&
+            !('rating' in data) &&
+            data.keys().hasAll(['optionIds']) &&
+            data.optionIds is list &&
+            data.optionIds.size() >= 1 &&
+            data.optionIds.size() <= 50 &&
+            data.optionIds[0] is string &&
+            data.optionIds[0].size() <= 64 &&
+            (decisionData.type == 'multiple' || data.optionIds.size() == 1)
+          )
+        );
+    }
+
+    function isVoteCounterUpdate() {
+      let keys = incoming().diff(existing()).affectedKeys();
+      return keys.hasAny(['options', 'totalVotes']) &&
+        keys.hasOnly(['options', 'totalVotes', 'averageRating', 'participants']) &&
+        incoming().options is list &&
+        (
+          incoming().options.size() == existing().options.size() ||
+          (existing().type == 'rating' && existing().options.size() == 0 && incoming().options.size() == 5)
+        ) &&
+        incoming().totalVotes is int &&
+        incoming().totalVotes >= 0 &&
+        (!('totalVotes' in existing()) || incoming().totalVotes >= existing().totalVotes) &&
+        (
+          !keys.hasAny(['averageRating']) ||
+          (
+            existing().type == 'rating' &&
+            incoming().averageRating is number &&
+            incoming().averageRating >= 0 &&
+            incoming().averageRating <= 5
+          )
+        ) &&
+        (
+          !keys.hasAny(['participants']) ||
+          (
+            (!('isAnonymous' in existing()) || existing().isAnonymous == false) &&
+            incoming().participants is list &&
+            incoming().participants.size() <= 200
+          )
+        );
     }
 
     match /users/{userId} {
@@ -121,61 +186,65 @@ service cloud.firestore {
     }
 
     match /decisions/{decisionId} {
-      allow read: if isSignedIn() && (
+      allow get: if isSignedIn() && isValidId(decisionId) && (
+        resource == null ||
         resource.data.audience == 'link' ||
-        (exists(/databases/$(database)/documents/orgs/$(resource.data.orgId)/members/$(request.auth.uid)) && (
+        (!isAnonymous() && isOrgMember(resource.data.orgId) && (
           resource.data.audience == 'org' ||
           (resource.data.audience == 'private' && resource.data.creator.uid == request.auth.uid)
         ))
       );
 
+      allow list: if isSignedIn() && !isAnonymous() &&
+        isOrgMember(resource.data.orgId) && (
+          resource.data.audience in ['org', 'link'] ||
+          (resource.data.audience == 'private' && resource.data.creator.uid == request.auth.uid)
+        );
+
       allow create: if isSignedIn() && !isAnonymous() &&
         isValidId(decisionId) &&
         incoming().orgId is string &&
-        exists(/databases/$(database)/documents/orgs/$(incoming().orgId)/members/$(request.auth.uid)) &&
+        incoming().orgId.size() <= 128 &&
+        isOrgMember(incoming().orgId) &&
+        incoming().creator is map &&
         incoming().creator.uid == request.auth.uid &&
-        incoming().title is string && incoming().title.size() <= 150 &&
-        incoming().description is string && incoming().description.size() <= 3000;
+        incoming().title is string && incoming().title.size() > 0 && incoming().title.size() <= 150 &&
+        incoming().description is string && incoming().description.size() <= 3000 &&
+        incoming().type in ['single', 'multiple', 'yes_no', 'rating'] &&
+        incoming().audience in ['org', 'private', 'link'] &&
+        (!('status' in incoming()) || incoming().status == 'active') &&
+        (!('totalVotes' in incoming()) || incoming().totalVotes == 0);
 
       allow update: if isSignedIn() && isValidId(decisionId) && (
         (
-          existing().audience == 'link' &&
-          incoming().options is list &&
-          incoming().options.size() == existing().options.size() &&
+          isDecisionActive(existing()) &&
+          isVoteCounterUpdate() &&
+          !exists(/databases/$(database)/documents/decisions/$(decisionId)/votes/$(request.auth.uid)) &&
+          existsAfter(/databases/$(database)/documents/decisions/$(decisionId)/votes/$(request.auth.uid)) &&
           (
-            incoming().diff(existing()).affectedKeys().hasOnly(['options']) ||
+            existing().audience == 'link' ||
             (
-              (!('isAnonymous' in existing()) || existing().isAnonymous == false) &&
-              incoming().diff(existing()).affectedKeys().hasOnly(['options', 'participants']) &&
-              incoming().participants is list &&
-              incoming().participants.size() <= 200
+              !isAnonymous() &&
+              isOrgMember(existing().orgId) &&
+              (existing().audience != 'private' || existing().creator.uid == request.auth.uid)
             )
-          ) &&
-          existsAfter(/databases/$(database)/documents/decisions/$(decisionId)/votes/$(request.auth.uid))
+          )
         ) ||
         (
-          exists(/databases/$(database)/documents/orgs/$(existing().orgId)/members/$(request.auth.uid)) && (
-            existing().creator.uid == request.auth.uid ||
-            isOrgOwner(existing().orgId) ||
+          !isAnonymous() &&
+          isOrgMember(existing().orgId) && (
+            (
+              (existing().creator.uid == request.auth.uid || isOrgOwner(existing().orgId)) &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['deadline', 'deadlineTs', 'status', 'finalDecision']) &&
+              (!('status' in incoming()) || incoming().status in ['active', 'closed']) &&
+              (!('deadline' in incoming()) || (incoming().deadline is string && incoming().deadline.size() <= 64))
+            ) ||
             (
               incoming().diff(existing()).affectedKeys().hasOnly(['comments']) &&
               incoming().comments is list &&
               incoming().comments.size() > 0 &&
+              incoming().comments.size() <= 500 &&
               incoming().comments[incoming().comments.size() - 1].uid == request.auth.uid
-            ) ||
-            (
-              incoming().options is list &&
-              incoming().options.size() == existing().options.size() &&
-              (
-                incoming().diff(existing()).affectedKeys().hasOnly(['options']) ||
-                (
-                  (!('isAnonymous' in existing()) || existing().isAnonymous == false) &&
-                  incoming().diff(existing()).affectedKeys().hasOnly(['options', 'participants']) &&
-                  incoming().participants is list &&
-                  incoming().participants.size() <= 200
-                )
-              ) &&
-              existsAfter(/databases/$(database)/documents/decisions/$(decisionId)/votes/$(request.auth.uid))
             )
           )
         )
@@ -184,37 +253,36 @@ service cloud.firestore {
       allow delete: if isSignedIn() && !isAnonymous() && isValidId(decisionId) && (existing().creator.uid == request.auth.uid || isOrgOwner(existing().orgId));
 
       match /votes/{voteId} {
-        allow read: if isSignedIn() && (
-          !isDecisionAnonymous(decisionId) || voteId == request.auth.uid
+        allow get: if isSignedIn() && isValidId(decisionId) && isValidId(voteId) && (
+          voteId == request.auth.uid ||
+          (!isAnonymous() && !isDecisionAnonymous(decisionId))
         ) && (
           get(/databases/$(database)/documents/decisions/$(decisionId)).data.audience == 'link' ||
-          exists(/databases/$(database)/documents/orgs/$(get(/databases/$(database)/documents/decisions/$(decisionId)).data.orgId)/members/$(request.auth.uid))
+          (!isAnonymous() && isOrgMember(get(/databases/$(database)/documents/decisions/$(decisionId)).data.orgId))
         );
+
+        allow list: if isSignedIn() && !isAnonymous() && isValidId(decisionId) &&
+          !isDecisionAnonymous(decisionId) &&
+          isOrgMember(get(/databases/$(database)/documents/decisions/$(decisionId)).data.orgId);
+
         allow create: if isSignedIn() &&
           isValidId(decisionId) && isValidId(voteId) &&
           voteId == request.auth.uid &&
-          resource == null &&
-          incoming().keys().hasAll(['userId', 'optionIds', 'timestamp']) &&
-          incoming().keys().hasOnly(['userId', 'optionIds', 'ratingValue', 'voterName', 'timestamp']) &&
-          incoming().userId == request.auth.uid &&
-          incoming().optionIds is list &&
-          incoming().optionIds.size() >= 1 &&
-          incoming().optionIds.size() <= 50 &&
-          incoming().timestamp is string &&
-          incoming().timestamp.size() <= 64 &&
-          (!('ratingValue' in incoming()) || (incoming().ratingValue is int && incoming().ratingValue >= 1 && incoming().ratingValue <= 5)) &&
-          (!('voterName' in incoming()) || (incoming().voterName is string && incoming().voterName.size() <= 60)) &&
-          (!('deadlineTs' in get(/databases/$(database)/documents/decisions/$(decisionId)).data) || request.time < get(/databases/$(database)/documents/decisions/$(decisionId)).data.deadlineTs) &&
+          exists(/databases/$(database)/documents/decisions/$(decisionId)) &&
+          isDecisionActive(get(/databases/$(database)/documents/decisions/$(decisionId)).data) &&
+          isValidVoteData(incoming(), get(/databases/$(database)/documents/decisions/$(decisionId)).data) &&
           (
             get(/databases/$(database)/documents/decisions/$(decisionId)).data.audience == 'link' ||
             (
-              exists(/databases/$(database)/documents/orgs/$(get(/databases/$(database)/documents/decisions/$(decisionId)).data.orgId)/members/$(request.auth.uid)) &&
+              !isAnonymous() &&
+              isOrgMember(get(/databases/$(database)/documents/decisions/$(decisionId)).data.orgId) &&
               (
                 get(/databases/$(database)/documents/decisions/$(decisionId)).data.audience != 'private' ||
                 get(/databases/$(database)/documents/decisions/$(decisionId)).data.creator.uid == request.auth.uid
               )
             )
           );
+
         allow update, delete: if false;
       }
     }

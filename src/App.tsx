@@ -36,7 +36,7 @@ import {
   arrayUnion,
   Timestamp
 } from 'firebase/firestore';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously, User } from 'firebase/auth';
 import { Decision, TeamMember, Organization, Toast, ToastType, DecisionOption } from './types';
 import { DecisionCard } from './components/DecisionCard';
 import { ToastContainer } from './components/ToastContainer';
@@ -53,7 +53,6 @@ import {
   completeEmailLinkSignIn,
   parseAuthError, 
   logout, 
-  signInAnon,
   handleFirestoreError, 
   OperationType 
 } from './lib/firebase';
@@ -71,7 +70,7 @@ export default function App() {
 
   const [publicDecision, setPublicDecision] = useState<Decision | null>(null);
   const [publicLoading, setPublicLoading] = useState(true);
-  const [publicAuthError, setPublicAuthError] = useState(false);
+  const [publicAuthError, setPublicAuthError] = useState<string | null>(null);
   const [publicAccessDenied, setPublicAccessDenied] = useState(false);
   const [publicVoted, setPublicVoted] = useState(false);
   const [publicUserOptions, setPublicUserOptions] = useState<string[]>([]);
@@ -121,14 +120,18 @@ export default function App() {
 
     const unsubAuth = onAuthStateChanged(auth, (u) => {
       if (!u) {
-        signInAnon().catch(() => {
-          setPublicAuthError(true);
+        signInAnonymously(auth).catch((err: any) => {
+          const msg =
+            (typeof err?.error === 'string' && err.error.trim()) ||
+            (err instanceof Error && err.message) ||
+            String(err);
+          setPublicAuthError(msg);
           setPublicLoading(false);
         });
         return;
       }
 
-      setPublicAuthError(false);
+      setPublicAuthError(null);
       setPublicAccessDenied(false);
 
       if (unsubSnapshot) unsubSnapshot();
@@ -146,6 +149,12 @@ export default function App() {
         (error: any) => {
           if (error?.code === 'permission-denied') {
             setPublicAccessDenied(true);
+          } else {
+            const msg =
+              (typeof error?.error === 'string' && error.error.trim()) ||
+              (error instanceof Error && error.message) ||
+              String(error);
+            setPublicAuthError(msg);
           }
           setPublicLoading(false);
         }
@@ -159,8 +168,11 @@ export default function App() {
             const data = snap.data();
             setPublicVoted(true);
             setPublicUserOptions(Array.isArray(data.optionIds) ? data.optionIds.map(String) : []);
-            if (typeof data.ratingValue === 'number') {
-              setPublicUserRating(data.ratingValue);
+            const savedRating = typeof data.rating === 'number' ? data.rating : data.ratingValue;
+            if (typeof savedRating === 'number') {
+              setPublicUserRating(savedRating);
+            } else {
+              setPublicUserRating(undefined);
             }
           } else {
             setPublicVoted(false);
@@ -197,7 +209,7 @@ export default function App() {
             <p className="text-xs text-slate-400">
               {publicAccessDenied
                 ? 'Questa votazione è riservata ai membri autorizzati. Accedi con il tuo account Google per continuare.'
-                : 'Accedi con Google per visualizzare questa proposta ed esprimere il tuo voto.'}
+                : publicAuthError || 'Accedi con Google per visualizzare questa proposta ed esprimere il tuo voto.'}
             </p>
             <div className="flex flex-col gap-2 pt-2">
               <button
@@ -230,8 +242,11 @@ export default function App() {
       );
     }
 
-    const totalVotes = publicDecision.options.reduce((sum, opt) => sum + (Number(opt.votes) || 0), 0);
-    const isExpired = getTimeRemaining(publicDecision.deadline).status === 'expired';
+    const computedTotalVotes = publicDecision.options.reduce((sum, opt) => sum + (Number(opt.votes) || 0), 0);
+    const totalVotes = typeof publicDecision.totalVotes === 'number' ? publicDecision.totalVotes : computedTotalVotes;
+    const isExpired =
+      getTimeRemaining(publicDecision.deadline).status === 'expired' ||
+      (publicDecision.status !== undefined && publicDecision.status !== 'active');
     const resultsVis = publicDecision.resultsVisibility || 'always';
     const canShowResults =
       resultsVis === 'always' ||
@@ -241,30 +256,30 @@ export default function App() {
     const handlePublicVote = async () => {
       if (publicSubmittingVote || publicVoted || isExpired) return;
       const isRating = publicDecision.type === 'rating';
-      if (isRating && (publicPendingRating === null || !Number.isInteger(publicPendingRating))) {
+      if (
+        isRating &&
+        (publicPendingRating === null ||
+          !Number.isInteger(publicPendingRating) ||
+          publicPendingRating < 1 ||
+          publicPendingRating > 5)
+      ) {
         return;
       }
       if (!isRating && publicSelectedOptions.length === 0) {
         return;
       }
+
       const numericRating = isRating ? Number(publicPendingRating) : undefined;
-      const optionIdsToSend =
-        isRating && numericRating !== undefined
-          ? [String(publicDecision.options[numericRating - 1]?.id ?? numericRating - 1)]
-          : publicDecision.type === 'single' || publicDecision.type === 'yes_no'
-          ? publicSelectedOptions.slice(0, 1)
-          : publicSelectedOptions;
+      const optionIdsToSend = isRating
+        ? undefined
+        : publicDecision.type === 'single' || publicDecision.type === 'yes_no'
+        ? publicSelectedOptions.slice(0, 1)
+        : publicSelectedOptions;
 
       setPublicSubmittingVote(true);
       try {
         if (!auth.currentUser) {
-          try {
-            await signInAnon();
-          } catch {
-            addToast('Accedi con Google per inviare il voto.', 'error');
-            setPublicAuthError(true);
-            return;
-          }
+          await signInAnonymously(auth);
         }
 
         await submitVote({
@@ -275,21 +290,22 @@ export default function App() {
         });
 
         setPublicVoted(true);
-        setPublicUserOptions(optionIdsToSend.map(String));
+        setPublicUserOptions((optionIdsToSend || []).map(String));
         if (numericRating !== undefined) {
           setPublicUserRating(numericRating);
         }
         addToast('Voto registrato!', 'success');
-      } catch (e: any) {
-        if (e instanceof VoteError) {
-          if (e.code === 'ALREADY_VOTED') {
-            setPublicVoted(true);
-            addToast('Hai già votato questa proposta.', 'warning');
-          } else {
-            addToast(e.message, 'error');
-          }
+      } catch (err: any) {
+        if (err instanceof VoteError && err.code === 'ALREADY_VOTED') {
+          setPublicVoted(true);
+          addToast(err.message || 'Hai già votato questa proposta.', 'warning');
         } else {
-          addToast('Errore durante l\'invio del voto. Riprova.', 'error');
+          const realError =
+            (typeof err?.error === 'string' && err.error.trim()) ||
+            (err instanceof Error && err.message) ||
+            (typeof err?.message === 'string' && err.message.trim()) ||
+            String(err);
+          addToast(realError, 'error');
         }
       } finally {
         setPublicSubmittingVote(false);
@@ -395,9 +411,17 @@ export default function App() {
                   ) : (
                     <div className="space-y-6">
                       {canShowResults ? (() => {
-                        const avgRating = totalVotes > 0
-                      ? (publicDecision.options.reduce((sum, opt, idx) => sum + (Number(opt.votes) || 0) * (idx + 1), 0) / totalVotes).toFixed(1)
-                          : '–';
+                        const avgRating =
+                          computedTotalVotes > 0
+                            ? (
+                                publicDecision.options.reduce(
+                                  (sum, opt, idx) => sum + (Number(opt.votes) || 0) * (idx + 1),
+                                  0
+                                ) / computedTotalVotes
+                              ).toFixed(1)
+                            : typeof publicDecision.averageRating === 'number' && totalVotes > 0
+                            ? publicDecision.averageRating.toFixed(1)
+                            : '–';
                         return (
                           <div className="flex items-center gap-5 p-5 bg-gradient-to-r from-amber-500/5 to-orange-500/5 rounded-2xl border border-amber-500/10">
                             <div className="text-center px-4 py-2 bg-white dark:bg-gray-950 rounded-xl shadow-xs border border-amber-100 dark:border-amber-900/30">
@@ -889,6 +913,9 @@ export default function App() {
       await addDoc(collection(db, 'decisions'), {
         ...newDecision,
         orgId: userOrgId,
+        status: 'active',
+        totalVotes: 0,
+        ...(newDecision.type === 'rating' ? { averageRating: 0 } : {}),
         creator: {
           uid: user.uid,
           name: user.displayName || 'Utente',
@@ -905,7 +932,7 @@ export default function App() {
     }
   };
 
-  const handleVote = async (decisionId: string, optionIds: string[], ratingValue?: number): Promise<boolean> => {
+  const handleVote = async (decisionId: string, optionIds?: string[], ratingValue?: number): Promise<boolean> => {
     if (!auth.currentUser) {
       addToast('Devi accedere per votare.', 'error');
       return false;
@@ -918,16 +945,17 @@ export default function App() {
       });
       addToast('Voto registrato!', 'success');
       return true;
-    } catch (e: any) {
-      if (e instanceof VoteError) {
-        if (e.code === 'ALREADY_VOTED') {
-          addToast('Hai già votato questa proposta.', 'warning');
-          return true;
-        }
-        addToast(e.message, 'error');
-      } else {
-        addToast('Errore durante l\'invio del voto. Riprova.', 'error');
+    } catch (err: any) {
+      if (err instanceof VoteError && err.code === 'ALREADY_VOTED') {
+        addToast(err.message || 'Hai già votato questa proposta.', 'warning');
+        return true;
       }
+      const realError =
+        (typeof err?.error === 'string' && err.error.trim()) ||
+        (err instanceof Error && err.message) ||
+        (typeof err?.message === 'string' && err.message.trim()) ||
+        String(err);
+      addToast(realError, 'error');
       return false;
     }
   };
@@ -971,7 +999,8 @@ export default function App() {
       const newDate = new Date(Math.max(Date.now(), new Date(decision.deadline).getTime()) + hours * 3600000);
       await updateDoc(doc(db, 'decisions', id), {
         deadline: newDate.toISOString(),
-        deadlineTs: Timestamp.fromDate(newDate)
+        deadlineTs: Timestamp.fromDate(newDate),
+        status: 'active'
       });
     } catch (e) {
       const msg = handleFirestoreError(e, OperationType.UPDATE, `decisions/${id}`);
@@ -984,7 +1013,8 @@ export default function App() {
       const pastDate = new Date(Date.now() - 1000);
       await updateDoc(doc(db, 'decisions', id), {
         deadline: pastDate.toISOString(),
-        deadlineTs: Timestamp.fromDate(pastDate)
+        deadlineTs: Timestamp.fromDate(pastDate),
+        status: 'closed'
       });
     } catch (e) {
       const msg = handleFirestoreError(e, OperationType.UPDATE, `decisions/${id}`);

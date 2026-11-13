@@ -21,13 +21,15 @@ export const DecisionCard: React.FC<DecisionCardProps> = ({ decision, onClick })
     return () => clearInterval(timer);
   }, [decision.deadline]);
 
-  const totalVotes = decision.options.reduce((sum, opt) => sum + (Number(opt.votes) || 0), 0);
+  const totalVotes = typeof decision.totalVotes === 'number'
+    ? decision.totalVotes
+    : decision.options.reduce((sum, opt) => sum + (Number(opt.votes) || 0), 0);
   const catStyles = getCategoryStyles(decision.category);
 
   let badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/30';
   let statusText = 'Attivo';
 
-  if (timeLeft.status === 'expired') {
+  if (timeLeft.status === 'expired' || (decision.status !== undefined && decision.status !== 'active')) {
     badgeColor = 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700';
     statusText = 'Concluso';
   } else if (timeLeft.status === 'warning') {

@@ -2,17 +2,22 @@
   "entities": {
     "Decision": {
       "title": "Decision",
-      "description": "A decision proposal with options and votes",
+      "description": "A decision proposal with options and vote counters",
       "type": "object",
       "properties": {
+        "orgId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Organization ID"
+        },
         "title": {
           "type": "string",
-          "maxLength": 100,
+          "maxLength": 150,
           "description": "Title of the decision"
         },
         "description": {
           "type": "string",
-          "maxLength": 1000,
+          "maxLength": 3000,
           "description": "Context and details"
         },
         "category": {
@@ -24,6 +29,11 @@
           "enum": ["single", "multiple", "yes_no", "rating"],
           "description": "Type of voting mechanism"
         },
+        "status": {
+          "type": "string",
+          "enum": ["active", "closed"],
+          "description": "Proposal voting status"
+        },
         "deadline": {
           "type": "string",
           "format": "date-time",
@@ -31,90 +41,102 @@
         },
         "audience": {
           "type": "string",
-          "enum": ["public", "restricted", "private"],
+          "enum": ["org", "private", "link"],
           "description": "Visibility level"
+        },
+        "isAnonymous": {
+          "type": "boolean",
+          "description": "Whether votes are anonymous"
+        },
+        "totalVotes": {
+          "type": "number",
+          "description": "Total vote count"
+        },
+        "averageRating": {
+          "type": "number",
+          "description": "Average rating for rating proposals"
         },
         "creator": {
           "type": "object",
-          "properties": {
-            "uid": { "type": "string" },
-            "name": { "type": "string" },
-            "avatar": { "type": "string" },
-            "role": { "type": "string" }
-          }
+          "description": "Creator metadata"
         },
         "options": {
           "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "number" },
-              "text": { "type": "string" },
-              "votes": { "type": "number" }
-            }
-          }
+          "description": "List of options with vote counts"
         },
-        "votes": {
+        "participants": {
           "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "userId": { "type": "string" },
-              "optionIds": { "type": "array", "items": { "type": "string" } },
-              "ratingValue": { "type": "number" },
-              "timestamp": { "type": "string", "format": "date-time" }
-            }
-          }
+          "description": "List of non-anonymous participants"
         },
         "comments": {
           "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "string" },
-              "author": { "type": "string" },
-              "avatar": { "type": "string" },
-              "text": { "type": "string" },
-              "timestamp": { "type": "string", "format": "date-time" }
-            }
-          }
+          "description": "List of comments"
         },
         "createdAt": {
           "type": "string",
           "format": "date-time"
-        },
-        "attachments": {
-          "type": "array",
-          "items": { "type": "string" }
         }
       },
-      "required": ["title", "description", "category", "type", "deadline", "creator", "options"]
+      "required": ["orgId", "title", "description", "category", "type", "status", "deadline", "audience", "creator", "options"]
+    },
+    "DecisionVote": {
+      "title": "DecisionVote",
+      "description": "A user vote document stored under decisions/{decisionId}/votes/{uid}",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Voter UID"
+        },
+        "voterName": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Optional voter display name"
+        },
+        "optionIds": {
+          "type": "array",
+          "description": "Selected option IDs for single/multiple/yes_no"
+        },
+        "rating": {
+          "type": "number",
+          "description": "Star rating from 1 to 5 for rating proposals"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of vote creation"
+        }
+      },
+      "required": ["createdAt"]
     },
     "Member": {
       "title": "Member",
-      "description": "A team member profile",
+      "description": "An organization member profile",
       "type": "object",
       "properties": {
+        "uid": { "type": "string" },
         "name": { "type": "string" },
-        "surname": { "type": "string" },
-        "department": { "type": "string" },
         "email": { "type": "string" },
-        "phone": { "type": "string" },
-        "role": { "type": "string" },
+        "role": { "type": "string", "enum": ["owner", "member"] },
         "avatar": { "type": "string" },
-        "status": { "type": "string" }
+        "joinedAt": { "type": "string" }
       },
-      "required": ["name", "surname", "department", "email", "role", "status"]
+      "required": ["uid", "name", "email", "role", "joinedAt"]
     }
   },
   "firestore": {
-    "decisions": {
-      "schema": "Decision",
+    "/decisions/{decisionId}": {
+      "schema": { "$ref": "#/entities/Decision" },
       "description": "Collection of all decision proposals"
     },
-    "members": {
-      "schema": "Member",
-      "description": "Team member directory"
+    "/decisions/{decisionId}/votes/{voteId}": {
+      "schema": { "$ref": "#/entities/DecisionVote" },
+      "description": "Per-user vote records keyed by voter UID"
+    },
+    "/orgs/{orgId}/members/{memberId}": {
+      "schema": { "$ref": "#/entities/Member" },
+      "description": "Organization member directory"
     }
   }
 }

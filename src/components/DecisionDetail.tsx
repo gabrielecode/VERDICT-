@@ -20,7 +20,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 interface DecisionDetailProps {
   decision: Decision;
   onBack: () => void;
-  onVote: (decisionId: string, optionIds: string[], ratingValue?: number) => Promise<boolean | void> | void;
+  onVote: (decisionId: string, optionIds?: string[], ratingValue?: number) => Promise<boolean | void> | void;
   onAddComment: (decisionId: string, text: string) => void;
   onSaveFinalDecision?: (decisionId: string, finalDecision: { text: string; responsible: string; date: string }) => void;
 }
@@ -67,7 +67,8 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
         if (snap.exists()) {
           const data = snap.data();
           setUserVotedOptions(Array.isArray(data.optionIds) ? data.optionIds.map(String) : []);
-          setUserRating(data.ratingValue);
+          const savedRating = typeof data.rating === 'number' ? data.rating : data.ratingValue;
+          setUserRating(typeof savedRating === 'number' ? savedRating : undefined);
           setHasVoted(true);
         } else if (!isSubmittingVote) {
           setUserVotedOptions([]);
@@ -83,8 +84,11 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
     return () => unsubscribe();
   }, [decision.id, auth.currentUser?.uid, isSubmittingVote]);
 
-  const totalVotes = decision.options.reduce((sum, opt) => sum + (Number(opt.votes) || 0), 0);
-  const isExpired = timeLeft.status === 'expired';
+  const computedTotalVotes = decision.options.reduce((sum, opt) => sum + (Number(opt.votes) || 0), 0);
+  const totalVotes = typeof decision.totalVotes === 'number' ? decision.totalVotes : computedTotalVotes;
+  const isExpired =
+    timeLeft.status === 'expired' ||
+    (decision.status !== undefined && decision.status !== 'active');
   const resultsVis = decision.resultsVisibility || 'always';
   const canShowResults = 
     resultsVis === 'always' || 
@@ -163,16 +167,14 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
     if (isExpired || hasVoted || isSubmittingVote) return;
 
     if (decision.type === 'rating' && pendingRating !== null) {
-      const ratingOptId = String(decision.options[pendingRating - 1]?.id ?? pendingRating - 1);
-      const votedOpts = [ratingOptId];
       const chosenRating = pendingRating;
       setIsSubmittingVote(true);
       setHasVoted(true);
-      setUserVotedOptions(votedOpts);
+      setUserVotedOptions([]);
       setUserRating(chosenRating);
       setPendingRating(null);
       try {
-        const res = await onVote(decision.id, votedOpts, chosenRating);
+        const res = await onVote(decision.id, undefined, chosenRating);
         if (res === false) {
           setHasVoted(false);
           setUserVotedOptions([]);
@@ -229,12 +231,20 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
 
   const getRatingBreakdown = () => {
     const totalRatings = decision.options.reduce((sum, opt) => sum + (Number(opt.votes) || 0), 0);
-    if (totalRatings === 0) return { average: '–', total: 0 };
+    if (totalRatings === 0) {
+      if (typeof decision.totalVotes === 'number' && decision.totalVotes > 0 && typeof decision.averageRating === 'number') {
+        return {
+          average: decision.averageRating.toFixed(1),
+          total: decision.totalVotes,
+        };
+      }
+      return { average: '–', total: 0 };
+    }
     const average = decision.options.reduce((sum, opt, idx) => sum + ((Number(opt.votes) || 0) * (idx + 1)), 0) / totalRatings;
     
     return {
       average: average.toFixed(1),
-      total: totalRatings
+      total: typeof decision.totalVotes === 'number' ? decision.totalVotes : totalRatings
     };
   };
 

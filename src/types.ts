@@ -49,10 +49,13 @@ export type DecisionType = 'single' | 'multiple' | 'yes_no' | 'rating';
 export type DecisionAudience = 'org' | 'private' | 'link';
 
 export interface Vote {
-  userId: string;
-  optionIds: string[];
+  userId?: string;
+  voterName?: string;
+  optionIds?: string[];
+  rating?: number;
   ratingValue?: number;
-  timestamp: string;
+  createdAt?: string | Timestamp;
+  timestamp?: string;
 }
 
 export interface Decision {
@@ -61,7 +64,10 @@ export interface Decision {
   title: string;
   description: string;
   type: DecisionType;
+  status?: 'active' | 'closed' | 'expired';
   options: DecisionOption[];
+  totalVotes?: number;
+  averageRating?: number;
   category: string;
   deadline: string;
   audience: DecisionAudience;

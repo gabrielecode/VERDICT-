@@ -3,45 +3,63 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>easy decision | Votazioni online e decisioni di team</title>
-    <meta name="description" content="Semplifica le decisioni di team con votazioni online rapide. Crea sondaggi, invita i colleghi e ottieni risultati in tempo reale su easy decision." />
+    <title>Easy Decision | Prendi decisioni di team veloci e trasparenti</title>
+    <meta name="description" content="Crea votazioni e sondaggi di team in 60 secondi: chi vota non deve registrarsi. Sì/No, scelta singola, multipla o stelle con risultati in tempo reale." />
     <meta name="theme-color" content="#2563eb" />
     <meta name="robots" content="index, follow" />
+    <!-- Bing: <meta name="msvalidate.01" content="" /> -->
     <link rel="canonical" href="https://easydecision.vercel.app/" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="easy decision | Votazioni online e decisioni di team" />
-    <meta property="og:description" content="Semplifica le decisioni di team con votazioni online rapide e trasparenti. Risultati real-time ed export PDF/CSV." />
+    <meta property="og:title" content="Easy Decision | Prendi decisioni di team veloci e trasparenti" />
+    <meta property="og:description" content="Decidi con il tuo team in 60 secondi senza riunioni infinite. Chi vota non deve registrarsi: risultati live, privacy LPD Svizzera & GDPR." />
     <meta property="og:url" content="https://easydecision.vercel.app/" />
     <meta property="og:locale" content="it_IT" />
-    <meta property="og:site_name" content="easy decision" />
+    <meta property="og:site_name" content="Easy Decision" />
     <meta property="og:image" content="https://easydecision.vercel.app/assets/aistudio/image_838f4b01.png" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="easy decision | Votazioni online e decisioni di team" />
-    <meta name="twitter:description" content="Semplifica le decisioni di team con votazioni online rapide e trasparenti. Risultati real-time ed export PDF/CSV." />
+    <meta name="twitter:title" content="Easy Decision | Prendi decisioni di team veloci e trasparenti" />
+    <meta name="twitter:description" content="Decidi con il tuo team in 60 secondi senza riunioni infinite. Chi vota non deve registrarsi: risultati live, 4 modalità di voto ed export PDF/CSV." />
     <meta name="twitter:image" content="https://easydecision.vercel.app/assets/aistudio/image_838f4b01.png" />
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesk:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesk:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
-    <!-- Structured Data -->
+    <!-- Structured Data: SoftwareApplication -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
-      "name": "easy decision",
+      "name": "Easy Decision",
+      "url": "https://easydecision.vercel.app/",
       "operatingSystem": "Web",
       "applicationCategory": "BusinessApplication",
-      "description": "Software per decisioni di team con votazioni a scelta singola/multipla, sì/no, stelle e risultati realtime."
+      "inLanguage": "it",
+      "description": "Piattaforma per votazioni e decisioni di team online in 60 secondi. Chi vota non deve registrarsi. Modalità Sì/No, scelta singola, multipla e stelle 1-5 con risultati in tempo reale e conformità LPD Svizzera e GDPR.",
+      "offers": [
+        {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "CHF",
+          "availability": "https://schema.org/InStock"
+        },
+        {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "EUR",
+          "availability": "https://schema.org/InStock"
+        }
+      ]
     }
     </script>
 
+    <!-- Structured Data: FAQPage -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -49,26 +67,34 @@
       "mainEntity": [
         {
           "@type": "Question",
-          "name": "I partecipanti devono creare un account?",
+          "name": "Quanto costa Easy Decision?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Sì, per garantire l'integrità del voto e la tracciabilità delle decisioni, utilizziamo l'autenticazione Google."
+            "text": "Durante l'Accesso Anticipato Gratuito tutte le funzionalità sono incluse a 0 CHF / 0 EUR: puoi creare proposte di voto, impostare scadenze, allegare contesto ed esportare i risultati in PDF e CSV."
           }
         },
         {
           "@type": "Question",
-          "name": "È possibile esportare i risultati?",
+          "name": "Chi vota deve registrarsi o creare un account?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Assolutamente. Ogni votazione conclusa può essere esportata in formato PDF o CSV con un semplice clic."
+            "text": "No: chi riceve il link di una votazione può esprimere il proprio voto istantaneamente senza registrarsi e senza installare alcuna app. Solo chi crea e gestisce la dashboard accede con Google o link email."
           }
         },
         {
           "@type": "Question",
-          "name": "Come vengono gestiti i dati aziendali?",
+          "name": "Come vengono protetti i dati e la privacy?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "I dati sono archiviati su Firebase Firestore con regole di sicurezza che permettono l'accesso solo agli utenti autorizzati."
+            "text": "Easy Decision rispetta la Legge Federale sulla Protezione dei Dati (LPD) svizzera e il GDPR europeo. I dati sono archiviati su infrastruttura cloud protetta con controllo degli accessi e non vengono mai ceduti a terzi."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Quali modalità di voto sono disponibili?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Puoi scegliere tra 4 modalità di voto: Sì / No per decisioni rapide, Scelta Singola, Scelta Multipla per raccogliere più preferenze e Valutazione a Stelle da 1 a 5."
           }
         }
       ]
@@ -78,8 +104,8 @@
   <body>
     <noscript>
       <div style="padding: 20px; text-align: center;">
-        <h1>easy decision | Software per decisioni di team e votazioni online</h1>
-        <p>easy decision è la piattaforma collaborativa per la gestione di decisioni aziendali, sondaggi di team e votazioni online. Crea votazioni a scelta singola, multipla, sì/no e valutazioni a stelle con scadenze in tempo reale ed export PDF/CSV. Abilita JavaScript per utilizzare l'applicazione.</p>
+        <h1>Easy Decision | Prendi decisioni di team veloci e trasparenti</h1>
+        <p>Decidi con il tuo team in 60 secondi, senza riunioni infinite. Chi vota non deve registrarsi: scegli tra Sì/No, scelta singola, multipla o stelle 1–5 con risultati in tempo reale e conformità LPD Svizzera e GDPR. Abilita JavaScript per utilizzare l'applicazione.</p>
       </div>
     </noscript>
     <div id="root"></div>

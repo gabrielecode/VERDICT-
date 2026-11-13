@@ -1,21 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  Vote, 
-  ChevronDown, 
-  Users, 
-  LogIn,
+import {
+  Vote,
+  ChevronDown,
   ArrowRight,
   ShieldCheck,
-  LayoutDashboard,
   Sun,
   Moon,
-  X,
   Clock,
-  MessageSquare,
+  Paperclip,
+  Share2,
   BarChart3,
   FileText,
   Mail,
-  Loader2
+  Loader2,
+  Star,
+  Check,
+  Users,
+  Briefcase,
+  Building2,
+  Lock,
+  UserCheck
 } from 'lucide-react';
 import { Footer } from './Footer';
 import { LegalModal } from './LegalModal';
@@ -29,19 +33,106 @@ interface HomePageProps {
   addToast: (message: string, type: ToastType) => void;
 }
 
+type PreviewMode = 'yes_no' | 'single' | 'multiple' | 'rating';
+
+const PREVIEW_DATA: Record<
+  PreviewMode,
+  {
+    label: string;
+    category: string;
+    title: string;
+    deadline: string;
+    attachment: string;
+    options: { id: string; text: string; votes: number }[];
+  }
+> = {
+  yes_no: {
+    label: 'Sì / No',
+    category: 'Approvazione · Clienti',
+    title: 'Approviamo la versione finale del preventivo Q4?',
+    deadline: 'Scade tra 18h',
+    attachment: 'preventivo-q4-v2.pdf',
+    options: [
+      { id: 'yn-1', text: 'Sì, approvato', votes: 9 },
+      { id: 'yn-2', text: 'No, servono modifiche', votes: 2 }
+    ]
+  },
+  single: {
+    label: 'Scelta Singola',
+    category: 'Team & Startup',
+    title: 'Quale strumento adottiamo per la gestione ticket?',
+    deadline: 'Scade tra 2g',
+    attachment: 'confronto-costi.xlsx',
+    options: [
+      { id: 's-1', text: 'Linear Pro', votes: 8 },
+      { id: 's-2', text: 'Jira Cloud', votes: 3 },
+      { id: 's-3', text: 'Shortcut', votes: 2 }
+    ]
+  },
+  multiple: {
+    label: 'Scelta Multipla',
+    category: 'Prodotto · Sprint',
+    title: 'Quali 2 priorità affrontiamo nel prossimo rilascio?',
+    deadline: 'Scade tra 12h',
+    attachment: 'roadmap-novembre.pdf',
+    options: [
+      { id: 'm-1', text: 'Export report PDF automatico', votes: 10 },
+      { id: 'm-2', text: 'Notifiche email di scadenza', votes: 7 },
+      { id: 'm-3', text: 'Tema scuro dashboard', votes: 5 }
+    ]
+  },
+  rating: {
+    label: 'Stelle 1–5',
+    category: 'Valutazione · Agenzia',
+    title: 'Quanto ti convince la nuova proposta di naming?',
+    deadline: 'Scade tra 24h',
+    attachment: 'brand-concept-deck.pdf',
+    options: []
+  }
+};
+
+const PARTNERS = [
+  { name: 'Pratiko', href: 'https://pratiko.ch/', logo: '/logos/pratiko.webp', padClass: 'p-1', fullBleed: false },
+  { name: 'RankUpList', href: 'https://rankuplist.com/', logo: '/logos/rankuplist.png', padClass: 'p-1', fullBleed: false },
+  { name: 'SwissLeadFinder', href: 'https://swissleadfinder.ch/it', logo: '/logos/swissleadfinder.png', padClass: 'p-2', fullBleed: false },
+  { name: 'KarePet', href: 'https://karepet.app/en/', logo: '/logos/karepet.png', padClass: '', fullBleed: true },
+  { name: 'EdilFree', href: 'https://edilfree.vercel.app/', logo: '/logos/edilfree.svg', padClass: '', fullBleed: true },
+  { name: 'ReviewDesk', href: 'https://reviewdesk.ai.studio/', logo: '/logos/reviewdesk.jpg', padClass: 'p-1.5', fullBleed: false },
+  { name: 'CuraFamily', href: 'https://curafamily.ch/it', logo: '/logos/curafamily.png', padClass: 'p-1', fullBleed: false }
+];
+
+const FAQS = [
+  {
+    q: 'Quanto costa Easy Decision?',
+    a: "Durante l'Accesso Anticipato Gratuito tutte le funzionalità sono incluse a 0 CHF / 0 EUR: puoi creare proposte di voto, impostare scadenze, allegare contesto ed esportare i risultati in PDF e CSV."
+  },
+  {
+    q: 'Chi vota deve registrarsi o creare un account?',
+    a: 'No: chi riceve il link di una votazione può esprimere il proprio voto istantaneamente senza registrarsi e senza installare alcuna app. Solo chi crea e gestisce la dashboard accede con Google o link email.'
+  },
+  {
+    q: 'Come vengono protetti i dati e la privacy?',
+    a: 'Easy Decision rispetta la Legge Federale sulla Protezione dei Dati (LPD) svizzera e il GDPR europeo. I dati sono archiviati su infrastruttura cloud protetta con controllo degli accessi e non vengono mai ceduti a terzi.'
+  },
+  {
+    q: 'Quali modalità di voto sono disponibili?',
+    a: 'Puoi scegliere tra 4 modalità di voto: Sì / No per decisioni rapide, Scelta Singola, Scelta Multipla per raccogliere più preferenze e Valutazione a Stelle da 1 a 5.'
+  }
+];
+
 export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, toggleDarkMode, addToast }) => {
   useEffect(() => {
-    document.title = "easy decision | Software per decisioni di team: votazioni e sondaggi online";
+    document.title = 'Easy Decision | Prendi decisioni di team veloci e trasparenti';
   }, []);
 
-  // Analytics event tracking helper (compatible with Google Tag Manager / GA4 dataLayer & custom listeners)
-  const trackEvent = (eventName: string, params?: Record<string, any>) => {
+  const trackEvent = (eventName: string, params?: Record<string, unknown>) => {
     if (typeof window !== 'undefined') {
-      if ((window as any).dataLayer) {
-        (window as any).dataLayer.push({ event: eventName, ...params });
+      const win = window as unknown as { dataLayer?: Record<string, unknown>[]; gtag?: (...args: unknown[]) => void };
+      if (win.dataLayer) {
+        win.dataLayer.push({ event: eventName, ...params });
       }
-      if (typeof (window as any).gtag === 'function') {
-        (window as any).gtag('event', eventName, params);
+      if (typeof win.gtag === 'function') {
+        win.gtag('event', eventName, params);
       }
       window.dispatchEvent(new CustomEvent('analytics_event', { detail: { eventName, params } }));
     }
@@ -67,502 +158,826 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
 
   const handleCtaClick = (location: string) => {
     trackEvent('cta_click', {
-      button_text: 'Provalo gratis',
-      location: location,
+      button_text: 'Crea gratis la tua prima votazione',
+      location
     });
     onLoginSuccess();
   };
 
-  const [legalModal, setLegalModal] = React.useState<{ isOpen: boolean; type: 'privacy' | 'cookie' }>({
+  const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: 'privacy' | 'cookie' }>({
     isOpen: false,
     type: 'privacy'
   });
 
-  const openLegal = (type: 'privacy' | 'cookie') => {
-    setLegalModal({ isOpen: true, type });
-  };
-
+  const [showEmailForm, setShowEmailForm] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [emailSent, setEmailSent] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
 
+  const [previewMode, setPreviewMode] = useState<PreviewMode>('yes_no');
+  const [previewSelection, setPreviewSelection] = useState<string[]>(['yn-1']);
+  const [previewRating, setPreviewRating] = useState<number>(4);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+
+  const handlePreviewModeChange = (mode: PreviewMode) => {
+    setPreviewMode(mode);
+    if (mode === 'yes_no') setPreviewSelection(['yn-1']);
+    else if (mode === 'single') setPreviewSelection(['s-1']);
+    else if (mode === 'multiple') setPreviewSelection(['m-1', 'm-2']);
+  };
+
+  const handlePreviewOptionToggle = (optionId: string) => {
+    if (previewMode === 'multiple') {
+      setPreviewSelection((prev) =>
+        prev.includes(optionId) ? (prev.length > 1 ? prev.filter((id) => id !== optionId) : prev) : [...prev, optionId]
+      );
+    } else {
+      setPreviewSelection([optionId]);
+    }
+  };
+
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!emailInput.trim()) return;
+    const trimmed = emailInput.trim();
+    if (!trimmed) return;
     setEmailLoading(true);
     try {
-      await sendEmailLink(emailInput.trim());
+      await sendEmailLink(trimmed);
       setEmailSent(true);
-      addToast('Controlla la tua email', 'success');
-    } catch (err: any) {
-      addToast(err?.message || 'Errore durante l\'invio dell\'email.', 'error');
+      addToast('Controlla la tua email per completare l’accesso.', 'success');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Errore durante l'invio dell'email.";
+      addToast(message, 'error');
     } finally {
       setEmailLoading(false);
     }
   };
 
-  const faqs = [
-    {
-      q: "Cos'è easy decision e come funziona?",
-      a: "easy decision è una piattaforma progettata per agevolare le decisioni collettive all'interno dei team aziendali. Funziona permettendo agli utenti di creare proposte di voto strutturate, raccogliere feedback in tempo reale dai collaboratori e visualizzare i risultati in modo chiaro."
-    },
-    {
-      q: "Quali tipi di votazione posso creare?",
-      a: "La piattaforma offre massima flessibilità permettendo di creare votazioni a scelta singola, scelta multipla, sondaggi sì/no e valutazioni a stelle per misurare il gradimento o la priorità."
-    },
-    {
-      q: "È necessaria la registrazione?",
-      a: "Sì, per garantire l'integrità dei voti e la collaborazione in tempo reale, easy decision utilizza l'autenticazione Google. Questo permette di identificare i partecipanti e gestire i permessi all'interno del team."
-    },
-    {
-      q: "Dove vengono salvati i dati?",
-      a: "Tutti i dati sono archiviati in modo sicuro su Firebase Firestore, garantendo la persistenza e l'integrità dei dati per il tuo team."
-    }
-  ];
+  const currentPreview = PREVIEW_DATA[previewMode];
+  const previewTotalVotes =
+    previewMode === 'rating'
+      ? 14
+      : currentPreview.options.reduce((acc, opt) => acc + opt.votes + (previewSelection.includes(opt.id) ? 1 : 0), 0);
 
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-gray-950 text-white' : 'bg-gradient-to-b from-gray-50 via-white to-gray-50 text-gray-900'} font-sans selection:bg-blue-100 selection:text-blue-900`}>
-      <header className={`sticky top-0 z-50 backdrop-blur-md border-b ${isDark ? 'bg-gray-950/85 border-gray-800' : 'bg-white/85 border-gray-200'} px-6 py-4`}>
-        <nav aria-label="Principale" className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <Vote className="w-5 h-5 stroke-[2.5]" aria-hidden="true" />
-            </div>
-            <div>
-              <span className="font-display font-bold text-xl tracking-tight block">easy decision</span>
-              <span className="text-xs font-bold text-blue-600 uppercase tracking-widest block">Cloud</span>
-            </div>
-          </div>
+    <div
+      className={`min-h-screen font-sans selection:bg-blue-100 selection:text-blue-900 pb-20 md:pb-0 ${
+        isDark ? 'bg-gray-950 text-slate-100' : 'bg-white text-slate-900'
+      }`}
+    >
+      {/* Top Bar: 3-zone contract */}
+      <header
+        className={`sticky top-0 z-50 backdrop-blur-md border-b ${
+          isDark ? 'bg-gray-950/90 border-gray-800' : 'bg-white/90 border-slate-200'
+        }`}
+      >
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-8">
+          {/* Zone 1: Brand wordmark */}
+          <a
+            href="/"
+            className="inline-flex items-center gap-2.5 text-lg font-display font-bold tracking-tight whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-lg"
+          >
+            <span className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
+              <Vote className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
+            </span>
+            <span>Easy Decision</span>
+          </a>
 
-          <div className="flex items-center gap-4">
-            <button
-              onClick={toggleDarkMode}
-              className={`p-2 rounded-xl border transition ${isDark ? 'border-gray-800 bg-gray-900 text-amber-400 hover:bg-gray-800' : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'}`}
-              aria-label="Cambia Tema"
+          {/* Zone 2: Concise single-line navigation links */}
+          <nav aria-label="Principale" className="hidden md:flex items-center gap-7 text-sm font-medium">
+            <a
+              href="#come-funziona"
+              className={`whitespace-nowrap shrink-0 hover:underline underline-offset-4 transition-colors ${
+                isDark ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-950'
+              }`}
             >
-              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              Come funziona
+            </a>
+            <a
+              href="#casi-duso"
+              className={`whitespace-nowrap shrink-0 hover:underline underline-offset-4 transition-colors ${
+                isDark ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-950'
+              }`}
+            >
+              Casi d’uso
+            </a>
+            <a
+              href="#vantaggi"
+              className={`whitespace-nowrap shrink-0 hover:underline underline-offset-4 transition-colors ${
+                isDark ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-950'
+              }`}
+            >
+              Vantaggi
+            </a>
+            <a
+              href="#faq"
+              className={`whitespace-nowrap shrink-0 hover:underline underline-offset-4 transition-colors ${
+                isDark ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-950'
+              }`}
+            >
+              FAQ
+            </a>
+          </nav>
+
+          {/* Zone 3: Theme toggle + Primary CTA */}
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={toggleDarkMode}
+              aria-label={isDark ? 'Attiva tema chiaro' : 'Attiva tema scuro'}
+              className={`p-2 rounded-lg border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
+                isDark
+                  ? 'border-gray-800 bg-gray-900 text-amber-400 hover:bg-gray-800'
+                  : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
             <button
+              type="button"
               onClick={() => handleCtaClick('header')}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition shadow-md shadow-blue-600/20 flex items-center gap-2"
+              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-colors cursor-pointer whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
             >
-              <LogIn className="w-4 h-4" /> Accedi con Google
+              Inizia gratis
             </button>
           </div>
-        </nav>
+        </div>
       </header>
 
       <main>
-        <section className="max-w-6xl mx-auto px-6 py-16 md:py-28 grid grid-cols-1 md:grid-cols-12 gap-12 items-center">
-          <div className="md:col-span-7 space-y-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-              </span>
-              <span className="text-[11px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider">
-                Accesso Anticipato Gratuito – tutte le funzionalità incluse
-              </span>
-            </div>
-            
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold tracking-tight leading-[1.1] text-slate-950 dark:text-white">
-              Basta chat infinite:<br />
-              <span className="text-blue-600">il tuo team decide qui.</span>
-            </h1>
-            
-            <p className={`text-lg md:text-xl leading-relaxed max-w-xl ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Crea votazioni chiare, raccogli feedback e ottieni risultati in tempo reale. La soluzione professionale per PM e team che vogliono agire, non solo discutere.
-            </p>
-
-
-            <div className="flex flex-col gap-4 pt-4">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button
-                  onClick={() => handleCtaClick('hero')}
-                  className="w-full sm:w-auto px-8 py-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-base transition shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 group"
+        {/* Hero Section */}
+        <section className="max-w-6xl mx-auto px-6 pt-12 pb-16 md:pt-20 md:pb-24">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-stretch">
+            <div className="lg:col-span-7 flex flex-col justify-center space-y-6">
+              <div>
+                <span
+                  className={`inline-block px-3 py-1.5 rounded-md border text-xs font-semibold tracking-tight ${
+                    isDark
+                      ? 'bg-blue-950/60 border-blue-800/80 text-blue-300'
+                      : 'bg-blue-50 border-blue-200 text-blue-700'
+                  }`}
                 >
-                  Provalo gratis con Google
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  Accesso Anticipato Gratuito — Tutto incluso
+                </span>
+              </div>
+
+              <h1
+                className={`text-[clamp(2.25rem,4.1vw,3.75rem)] font-display font-bold tracking-tight leading-[1.08] [text-wrap:balance] ${
+                  isDark ? 'text-white' : 'text-slate-950'
+                }`}
+              >
+                Decidi con il tuo team in 60 secondi, senza riunioni infinite
+              </h1>
+
+              <p
+                className={`text-base md:text-lg leading-relaxed max-w-2xl ${
+                  isDark ? 'text-slate-300' : 'text-slate-600'
+                }`}
+              >
+                Crea una proposta con opzioni, allegati e scadenza e invia un semplice link:{' '}
+                <strong className={isDark ? 'text-white font-semibold' : 'text-slate-900 font-semibold'}>
+                  chi vota non deve registrarsi
+                </strong>
+                . Raccogli voti in tempo reale ed esporta i risultati in PDF o CSV.
+              </p>
+
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleCtaClick('hero')}
+                  className="px-7 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base transition-colors cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                >
+                  <span>Crea la tua prima votazione gratis</span>
+                  <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowEmailForm((prev) => !prev)}
+                  className={`px-5 py-3.5 rounded-xl border text-sm font-semibold transition-colors cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
+                    isDark
+                      ? 'border-gray-800 bg-gray-900 text-slate-200 hover:bg-gray-800'
+                      : 'border-slate-200 bg-slate-50 text-slate-800 hover:bg-slate-100'
+                  }`}
+                >
+                  <Mail className="w-4 h-4" aria-hidden="true" />
+                  <span>Accedi via email</span>
                 </button>
               </div>
 
-              <div className={`p-6 rounded-2xl border ${isDark ? 'border-gray-800 bg-gray-900/50' : 'border-gray-200 bg-white shadow-sm'} max-w-md space-y-3`}>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Accesso senza password via email</h3>
-                {emailSent ? (
-                  <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold text-center">
-                    Controlla la tua email
-                  </div>
-                ) : (
-                  <form onSubmit={handleEmailLogin} className="flex gap-2">
-                    <input
-                      type="email"
-                      required
-                      value={emailInput}
-                      onChange={(e) => setEmailInput(e.target.value)}
-                      placeholder="nome@azienda.it"
-                      className="flex-1 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                      type="submit"
-                      disabled={emailLoading}
-                      className="px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition disabled:opacity-50 flex items-center justify-center gap-1.5"
-                    >
-                      {emailLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />} Invia Link
-                    </button>
-                  </form>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4 pt-2">
-              <div className="flex -space-x-2">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="w-8 h-8 rounded-full border-2 border-white dark:border-gray-950 bg-gray-200 overflow-hidden">
-                    <img src={`https://i.pravatar.cc/100?img=${i + 20}`} alt={`Membro del team ${i}`} loading="lazy" />
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                <span className="font-bold text-slate-900 dark:text-white">Fiducia</span> in oltre 50 associazioni e PMI italiane
-              </p>
-            </div>
-          </div>
-
-          <div className="md:col-span-5 relative">
-            <div className={`p-1 rounded-[2.5rem] border shadow-2xl ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-100 border-gray-200'} relative z-10 overflow-hidden`}>
-              <div className={`bg-white dark:bg-gray-900 rounded-[2.2rem] overflow-hidden`}>
-                {/* Browser Mockup UI */}
-                <div className="bg-gray-50 dark:bg-gray-800 px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                  <div className="flex gap-1.5">
-                    <div className="w-3 h-3 rounded-full bg-red-400" />
-                    <div className="w-3 h-3 rounded-full bg-amber-400" />
-                    <div className="w-3 h-3 rounded-full bg-emerald-400" />
-                  </div>
-                  <div className="bg-white dark:bg-gray-950 px-3 py-1 rounded-md border border-gray-200 dark:border-gray-800 text-[10px] text-gray-400 font-mono">
-                    easydecision.cloud/v/83k2
-                  </div>
-                  <div className="w-6" />
+              {showEmailForm && (
+                <div
+                  className={`p-4 rounded-xl border max-w-md ${
+                    isDark ? 'border-gray-800 bg-gray-900/70' : 'border-slate-200 bg-slate-50'
+                  }`}
+                >
+                  {emailSent ? (
+                    <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                      Link inviato: controlla la tua email per accedere alla dashboard.
+                    </p>
+                  ) : (
+                    <form onSubmit={handleEmailLogin} className="flex flex-col sm:flex-row gap-2">
+                      <label htmlFor="hero-email-login" className="sr-only">
+                        Indirizzo email aziendale
+                      </label>
+                      <input
+                        id="hero-email-login"
+                        type="email"
+                        required
+                        value={emailInput}
+                        onChange={(e) => setEmailInput(e.target.value)}
+                        placeholder="nome@azienda.it"
+                        className={`flex-1 px-3.5 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 ${
+                          isDark
+                            ? 'border-gray-700 bg-gray-950 text-white placeholder:text-slate-500'
+                            : 'border-slate-200 bg-white text-slate-900 placeholder:text-slate-400'
+                        }`}
+                      />
+                      <button
+                        type="submit"
+                        disabled={emailLoading}
+                        className="px-4 py-2.5 rounded-lg bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-700 text-white text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0"
+                      >
+                        {emailLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                        <span>Invia link</span>
+                      </button>
+                    </form>
+                  )}
                 </div>
-                
-                <div className="p-6 space-y-6">
-                  <div className="space-y-2">
-                    <div className="inline-flex px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase">Progetto Alfa</div>
-                    <h3 className="text-lg font-bold leading-tight">Nuovo fornitore logistica?</h3>
+              )}
+
+              <div
+                className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium pt-1 ${
+                  isDark ? 'text-slate-400' : 'text-slate-500'
+                }`}
+              >
+                <span>0 CHF / 0 EUR in Accesso Anticipato</span>
+                <span aria-hidden="true">·</span>
+                <span>Zero registrazione per i votanti</span>
+                <span aria-hidden="true">·</span>
+                <span>LPD Svizzera & GDPR</span>
+              </div>
+            </div>
+
+            {/* Interactive Live Product Preview */}
+            <div className="lg:col-span-5 flex flex-col">
+              <div
+                className={`h-full rounded-2xl border p-5 md:p-6 flex flex-col justify-between space-y-5 ${
+                  isDark ? 'bg-gray-900 border-gray-800' : 'bg-slate-50 border-slate-200'
+                }`}
+              >
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span
+                      className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                    >
+                      Anteprima interattiva · Prova un voto
+                    </span>
+                    <span
+                      className={`text-xs font-mono tabular-nums ${
+                        isDark ? 'text-slate-400' : 'text-slate-500'
+                      }`}
+                    >
+                      {currentPreview.deadline}
+                    </span>
                   </div>
 
-                  <div className="space-y-3">
-                    {[
-                      { label: 'LogiExpress SpA', votes: 65, color: 'bg-blue-600' },
-                      { label: 'FastShipping srl', votes: 35, color: 'bg-slate-300 dark:bg-slate-700' }
-                    ].map((opt, i) => (
-                      <div key={i} className="space-y-1.5">
-                        <div className="flex justify-between text-xs font-bold">
-                          <span>{opt.label}</span>
-                          <span>{opt.votes}%</span>
-                        </div>
-                        <div className="h-2 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                          <div className={`h-full ${opt.color} rounded-full`} style={{ width: `${opt.votes}%` }} />
-                        </div>
-                      </div>
+                  {/* Interactive mode selector */}
+                  <div
+                    role="tablist"
+                    aria-label="Modalità di voto"
+                    className={`grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 rounded-lg border ${
+                      isDark ? 'bg-gray-950 border-gray-800' : 'bg-white border-slate-200'
+                    }`}
+                  >
+                    {(['yes_no', 'single', 'multiple', 'rating'] as PreviewMode[]).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        role="tab"
+                        aria-selected={previewMode === mode}
+                        onClick={() => handlePreviewModeChange(mode)}
+                        className={`px-2 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer whitespace-nowrap truncate ${
+                          previewMode === mode
+                            ? 'bg-blue-600 text-white'
+                            : isDark
+                              ? 'text-slate-300 hover:bg-gray-800'
+                              : 'text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        {PREVIEW_DATA[mode].label}
+                      </button>
                     ))}
                   </div>
 
-                  <div className="pt-2 flex items-center gap-2">
-                    <div className="flex -space-x-1">
-                      {[1, 2, 3, 4].map(i => <div key={i} className="w-5 h-5 rounded-full border border-white dark:border-gray-900 bg-gray-200" />)}
+                  {/* Preview proposal card */}
+                  <div
+                    className={`rounded-xl border p-5 space-y-4 ${
+                      isDark ? 'bg-gray-950 border-gray-800' : 'bg-white border-slate-200'
+                    }`}
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                        <span>{currentPreview.category}</span>
+                        <span aria-hidden="true">·</span>
+                        <span className="inline-flex items-center gap-1">
+                          <Paperclip className="w-3 h-3" aria-hidden="true" />
+                          {currentPreview.attachment}
+                        </span>
+                      </div>
+                      <h2
+                        className={`text-base font-display font-bold leading-snug ${
+                          isDark ? 'text-white' : 'text-slate-950'
+                        }`}
+                      >
+                        {currentPreview.title}
+                      </h2>
                     </div>
-                    <span className="text-[10px] font-medium text-gray-400">12 voti registrati in tempo reale</span>
+
+                    {previewMode === 'rating' ? (
+                      <div className="space-y-3 py-2">
+                        <div className="flex items-center gap-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setPreviewRating(star)}
+                              aria-label={`Valuta ${star} stelle su 5`}
+                              className="p-1 cursor-pointer transition-transform active:scale-95"
+                            >
+                              <Star
+                                className={`w-7 h-7 ${
+                                  star <= previewRating
+                                    ? 'fill-amber-400 text-amber-400'
+                                    : isDark
+                                      ? 'text-gray-700'
+                                      : 'text-slate-200'
+                                }`}
+                              />
+                            </button>
+                          ))}
+                          <span className="ml-auto text-sm font-mono font-bold tabular-nums text-amber-500">
+                            {((4.3 * 13 + previewRating) / 14).toFixed(1)} / 5
+                          </span>
+                        </div>
+                        <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                          Il tuo voto di prova: {previewRating} {previewRating === 1 ? 'stella' : 'stelle'} su 5
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {currentPreview.options.map((opt) => {
+                          const isSelected = previewSelection.includes(opt.id);
+                          const count = opt.votes + (isSelected ? 1 : 0);
+                          const pct = previewTotalVotes > 0 ? Math.round((count / previewTotalVotes) * 100) : 0;
+
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => handlePreviewOptionToggle(opt.id)}
+                              className={`w-full text-left p-3 rounded-lg border transition-colors cursor-pointer space-y-2 ${
+                                isSelected
+                                  ? isDark
+                                    ? 'border-blue-500 bg-blue-950/30'
+                                    : 'border-blue-600 bg-blue-50/50'
+                                  : isDark
+                                    ? 'border-gray-800 hover:border-gray-700'
+                                    : 'border-slate-200 hover:border-slate-300'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-3 text-xs font-semibold">
+                                <span className="flex items-center gap-2 min-w-0">
+                                  <span
+                                    className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border ${
+                                      isSelected
+                                        ? 'bg-blue-600 border-blue-600 text-white'
+                                        : isDark
+                                          ? 'border-gray-700'
+                                          : 'border-slate-300'
+                                    }`}
+                                  >
+                                    {isSelected && <Check className="w-3 h-3 stroke-[3]" aria-hidden="true" />}
+                                  </span>
+                                  <span className="truncate">{opt.text}</span>
+                                </span>
+                                <span className="font-mono tabular-nums shrink-0">{pct}%</span>
+                              </div>
+                              <div
+                                className={`h-1.5 w-full rounded-full overflow-hidden ${
+                                  isDark ? 'bg-gray-800' : 'bg-slate-100'
+                                }`}
+                              >
+                                <div
+                                  className="h-full bg-blue-600 transition-all duration-200"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
+                </div>
+
+                <div
+                  className={`flex items-center justify-between text-xs pt-1 border-t ${
+                    isDark ? 'border-gray-800 text-slate-400' : 'border-slate-200 text-slate-500'
+                  }`}
+                >
+                  <span className="font-mono tabular-nums">{previewTotalVotes} voti in tempo reale</span>
+                  <span>Voto aperto senza login</span>
                 </div>
               </div>
             </div>
-            {/* Background elements */}
-            <div className="absolute -top-12 -right-12 w-64 h-64 bg-blue-600/20 blur-[80px] rounded-full -z-0" />
-            <div className="absolute -bottom-12 -left-12 w-64 h-64 bg-emerald-600/20 blur-[80px] rounded-full -z-0" />
           </div>
         </section>
 
-        {/* Pre-rendered content for SEO */}
-        <section className="sr-only">
-          <h2>Perché scegliere easy decision per le tue votazioni online?</h2>
-          <p>easy decision è lo strumento ideale per gestire le decisioni di team in modo asincrono e trasparente. Con la nostra piattaforma di votazioni online, puoi creare sondaggi personalizzati, invitare i partecipanti con un semplice link e analizzare i risultati in tempo reale.</p>
-          <ul>
-            <li>Votazioni a scelta singola o multipla</li>
-            <li>Sondaggi sì o no per decisioni rapide</li>
-            <li>Valutazioni a stelle per feedback qualitativi</li>
-            <li>Esportazione risultati in PDF e CSV</li>
-          </ul>
-        </section>
-
-        <section id="problem-solution" className={`py-24 border-y ${isDark ? 'bg-slate-900/30 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
+        {/* Social proof / Partner strip adjacent to Hero */}
+        <section
+          aria-label="Organizzazioni che usano Easy Decision"
+          className={`border-y py-10 ${isDark ? 'border-gray-800 bg-gray-900/30' : 'border-slate-200 bg-slate-50/70'}`}
+        >
           <div className="max-w-6xl mx-auto px-6">
-            <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-              <h2 className="text-3xl md:text-4xl font-display font-bold text-slate-900 dark:text-white">
-                Basta perdere tempo in bivi senza fine
-              </h2>
-              <p className="text-slate-500 dark:text-slate-400">
-                Trasforma il caos delle discussioni in decisioni esecutive, tracciabili e condivise.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-              <div className="space-y-5">
-                 <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-                   <X className="w-6 h-6" />
-                 </div>
-                 <h3 className="text-xl font-bold text-slate-900 dark:text-white">Decisioni disperse in chat</h3>
-                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                   Smetti di scrollare centinaia di messaggi su WhatsApp o Slack per capire la volontà del team. <span className="text-blue-600 font-bold">Con easy decision</span>, hai una votazione strutturata e un verdetto immediato.
-                 </p>
-              </div>
-
-              <div className="space-y-5">
-                 <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                   <Clock className="w-6 h-6" />
-                 </div>
-                 <h3 className="text-xl font-bold text-slate-900 dark:text-white">Riunioni lunghe e inutili</h3>
-                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                   Non sprecare ore a discutere opzioni che possono essere votate in asincrono. <span className="text-blue-600 font-bold">Arriva in riunione</span> con i dati già pronti e concentrati il tempo sull'esecuzione.
-                 </p>
-              </div>
-
-              <div className="space-y-5">
-                 <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                   <LayoutDashboard className="w-6 h-6" />
-                 </div>
-                 <h3 className="text-xl font-bold text-slate-900 dark:text-white">Mancanza di traccia storica</h3>
-                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                   Evita il classico "chi aveva deciso questo?". <span className="text-blue-600 font-bold">Ogni scelta</span> viene archiviata con i nomi dei votanti e i commenti, pronta per essere esportata in PDF o CSV.
-                 </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="features" className={`py-24 ${isDark ? 'bg-slate-900/10' : 'bg-white'}`}>
-          <div className="max-w-6xl mx-auto px-6">
-            <div className="text-center max-w-2xl mx-auto mb-16 space-y-4">
-              <h2 className="text-3xl md:text-4xl font-display font-bold text-slate-950 dark:text-white">
-                Tutto ciò che serve per decidere bene
-              </h2>
-              <p className="text-slate-500 dark:text-slate-400">
-                Strumenti pensati per la chiarezza, non per la burocrazia.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {[
-                { title: 'Votazioni su misura', desc: 'Scegli tra voto singolo, multiplo, sì/no o stelle in base alla complessità del bivio.', icon: Vote },
-                { title: 'Decisioni puntuali', desc: 'Imposta una scadenza automatica per evitare che le discussioni si trascinino all\'infinito.', icon: Clock },
-                { title: 'Dialogo costruttivo', desc: 'Ogni proposta ha la sua sezione commenti per chiarire dubbi senza sporcare le chat.', icon: MessageSquare },
-                { title: 'Dati sempre aggiornati', desc: 'Visualizza l\'andamento dei voti in tempo reale con grafici chiari e intuitivi.', icon: BarChart3 },
-                { title: 'Report professionali', desc: 'Trasforma ogni decisione in un documento ufficiale PDF o CSV pronto per la condivisione.', icon: FileText },
-                { title: 'Controllo totale', desc: 'Gestisci tutte le tue proposte e i membri del team da un\'unica dashboard centralizzata.', icon: ShieldCheck }
-              ].map((feat, i) => (
-                <div key={i} className="p-6 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-blue-100 dark:hover:border-blue-900/30 transition-colors group">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-4 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                    <feat.icon className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-bold text-slate-900 dark:text-white mb-2">{feat.title}</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{feat.desc}</p>
-                </div>
+            <p
+              className={`text-xs font-semibold text-center mb-6 ${
+                isDark ? 'text-slate-400' : 'text-slate-500'
+              }`}
+            >
+              Scelto da team, agenzie e associazioni tra Svizzera e Italia
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-6">
+              {PARTNERS.map((partner) => (
+                <a
+                  key={partner.href}
+                  href={partner.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group inline-flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-lg py-1"
+                >
+                  <span
+                    className={`w-9 h-9 rounded-lg overflow-hidden shrink-0 flex items-center justify-center ${
+                      partner.fullBleed
+                        ? ''
+                        : `bg-white border border-slate-200 dark:border-slate-700 ${partner.padClass}`
+                    }`}
+                  >
+                    <img
+                      src={partner.logo}
+                      alt={`${partner.name} logo`}
+                      referrerPolicy="no-referrer"
+                      loading="lazy"
+                      className={`w-full h-full ${partner.fullBleed ? 'object-cover' : 'object-contain'}`}
+                    />
+                  </span>
+                  <span
+                    className={`text-sm font-display font-bold tracking-tight transition-colors ${
+                      isDark ? 'text-slate-200 group-hover:text-white' : 'text-slate-700 group-hover:text-slate-950'
+                    }`}
+                  >
+                    {partner.name}
+                  </span>
+                </a>
               ))}
             </div>
           </div>
         </section>
 
-        <section id="how-it-works" className="py-24 max-w-6xl mx-auto px-6">
-          <div className="text-center max-w-2xl mx-auto mb-16 space-y-4">
-            <h2 className="text-3xl md:text-4xl font-display font-bold text-slate-950 dark:text-white">
-              Dal dubbio al verdetto in 3 passi
+        {/* Come funziona (3 step) */}
+        <section id="come-funziona" className="max-w-6xl mx-auto px-6 py-20 md:py-24">
+          <div className="max-w-2xl space-y-3 mb-14">
+            <h2
+              className={`text-2xl md:text-4xl font-display font-bold tracking-tight [text-wrap:balance] ${
+                isDark ? 'text-white' : 'text-slate-950'
+              }`}
+            >
+              Come funziona in 3 passaggi
             </h2>
-            <p className="text-slate-500 dark:text-slate-400">
-              Abbiamo eliminato ogni complessità superflua per permetterti di focalizzarti solo sulla scelta.
+            <p className={`text-base ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              Dall’idea al verdetto condiviso in meno di un minuto, senza installazioni né onboarding complessi.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            {/* Connection line for desktop */}
-            <div className="hidden md:block absolute top-12 left-1/4 right-1/4 h-px border-t border-dashed border-gray-200 dark:border-gray-800 -z-10" />
-            
-            <div className="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-6 flex flex-col items-center text-center">
-              <div className="w-16 h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-2xl font-black shadow-lg shadow-blue-600/20">
-                1
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              {
+                num: '01.',
+                title: 'Crea la proposta',
+                desc: 'Imposta titolo, descrizione, eventuali allegati di riferimento e data di scadenza. Scegli tra Sì/No, scelta singola, multipla o stelle 1–5.',
+                icon: FileText
+              },
+              {
+                num: '02.',
+                title: 'Condividi il link',
+                desc: 'Copia il link diretto e invialo su WhatsApp, Slack, Microsoft Teams o email. Chi vota apre la pagina e sceglie subito, senza creare un account.',
+                icon: Share2
+              },
+              {
+                num: '03.',
+                title: 'Risultato in tempo reale',
+                desc: 'Segui i voti e i commenti aggiornarsi istantaneamente. A chiusura, archivia il verdetto ed esporta il verbale in PDF o CSV con un clic.',
+                icon: BarChart3
+              }
+            ].map((step) => (
+              <div
+                key={step.num}
+                className={`p-7 rounded-2xl border flex flex-col justify-between space-y-6 ${
+                  isDark ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-slate-200'
+                }`}
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-sm font-bold text-blue-600 dark:text-blue-400 tabular-nums">
+                      {step.num}
+                    </span>
+                    <step.icon
+                      className={`w-5 h-5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <h3 className={`text-xl font-display font-bold ${isDark ? 'text-white' : 'text-slate-950'}`}>
+                    {step.title}
+                  </h3>
+                  <p className={`text-sm leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                    {step.desc}
+                  </p>
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Crea la votazione</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                Inserisci il titolo, descrivi il contesto e scegli il tipo di voto (singolo, multiplo o stelle).
-              </p>
-            </div>
-
-            <div className="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-6 flex flex-col items-center text-center">
-              <div className="w-16 h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-2xl font-black shadow-lg shadow-blue-600/20">
-                2
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Invita con un link</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                Copia il link privato e invialo su Slack, Teams o Email. I colleghi votano in un clic senza attriti.
-              </p>
-            </div>
-
-            <div className="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-6 flex flex-col items-center text-center">
-              <div className="w-16 h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-2xl font-black shadow-lg shadow-blue-600/20">
-                3
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Analizza ed Esporta</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                Visualizza grafici in tempo reale e scarica il report in PDF o CSV per i tuoi archivi aziendali.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-16 text-center">
-            <button
-              onClick={() => handleCtaClick('how_it_works')}
-              className="px-10 py-5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg transition shadow-xl shadow-blue-600/25 inline-flex items-center gap-3 group"
-            >
-              Provalo gratis
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
+            ))}
           </div>
         </section>
-        <section id="use-cases" className={`py-24 ${isDark ? 'bg-slate-900/20' : 'bg-slate-50'}`}>
+
+        {/* 3 Casi d'uso */}
+        <section
+          id="casi-duso"
+          className={`border-y py-20 md:py-24 ${
+            isDark ? 'border-gray-800 bg-gray-900/30' : 'border-slate-200 bg-slate-50'
+          }`}
+        >
           <div className="max-w-6xl mx-auto px-6">
-            <div className="text-center max-w-2xl mx-auto mb-16 space-y-4">
-              <h2 className="text-3xl md:text-4xl font-display font-bold text-slate-950 dark:text-white">
-                Pronto per ogni scenario
+            <div className="max-w-2xl space-y-3 mb-14">
+              <h2
+                className={`text-2xl md:text-4xl font-display font-bold tracking-tight [text-wrap:balance] ${
+                  isDark ? 'text-white' : 'text-slate-950'
+                }`}
+              >
+                Pensato per chi deve chiudere decisioni ogni giorno
               </h2>
-              <p className="text-slate-500 dark:text-slate-400">
-                Dalla piccola decisione quotidiana alla strategia trimestrale.
+              <p className={`text-base ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                Tre contesti reali in cui una votazione strutturata sostituisce decine di messaggi sparsi.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[
-                { title: 'Scelta Fornitori', example: 'Quale CRM adottare nel Q1?', type: 'Scelta Multipla' },
-                { title: 'Approvazione Proposte', example: 'Approviamo il nuovo layout del sito?', type: 'Sì / No' },
-                { title: 'Selezione Candidati', example: 'Chi è il profilo più adatto per il ruolo HR?', type: 'Valutazione a Stelle' },
-                { title: 'Pianificazione Team', example: 'Dove organizziamo il prossimo off-site?', type: 'Scelta Singola' }
-              ].map((useCase, i) => (
-                <div key={i} className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-between group hover:shadow-md transition-shadow">
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">{useCase.type}</span>
-                    <h4 className="font-bold text-slate-900 dark:text-white">{useCase.title}</h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 italic">"{useCase.example}"</p>
+                {
+                  icon: Users,
+                  kicker: 'Prodotto & Operations · Scelta Multipla',
+                  title: 'Team & Startup',
+                  desc: 'Definisci priorità di sprint, scelta fornitori e orari di team in modalità asincrona, arrivando in riunione con la decisione già presa.',
+                  example: '“Quali 2 integrazioni rilasciamo prima nel Q1?”'
+                },
+                {
+                  icon: Briefcase,
+                  kicker: 'Approvazioni & Naming · Sì / No',
+                  title: 'Agenzie & Clienti',
+                  desc: 'Condividi proposte grafiche, bozze di copy o preventivi con allegati e ottieni il via libera del cliente con un clic, senza fargli creare account.',
+                  example: '“Approvi il layout homepage v3 allegato?”'
+                },
+                {
+                  icon: Building2,
+                  kicker: 'Comitati & Volontari · Scelta Singola',
+                  title: 'Associazioni & Gruppi',
+                  desc: 'Raccogli voti trasparenti per delibere, budget eventi e date di assemblea, accessibili da qualsiasi smartphone e archiviabili in PDF.',
+                  example: '“Quale data preferite per l’assemblea annuale?”'
+                }
+              ].map((item) => (
+                <article
+                  key={item.title}
+                  className={`p-7 rounded-2xl border flex flex-col justify-between space-y-6 ${
+                    isDark ? 'bg-gray-950 border-gray-800' : 'bg-white border-slate-200'
+                  }`}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-xs font-medium ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+                        {item.kicker}
+                      </span>
+                      <item.icon
+                        className={`w-4 h-4 shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <h3 className={`text-xl font-display font-bold ${isDark ? 'text-white' : 'text-slate-950'}`}>
+                      {item.title}
+                    </h3>
+                    <p className={`text-sm leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                      {item.desc}
+                    </p>
                   </div>
-                  <div className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-300 group-hover:text-blue-500 transition-colors">
-                    <ArrowRight className="w-5 h-5" />
-                  </div>
-                </div>
+
+                  <p
+                    className={`pt-4 border-t text-xs italic ${
+                      isDark ? 'border-gray-800 text-slate-400' : 'border-slate-100 text-slate-500'
+                    }`}
+                  >
+                    Esempio: {item.example}
+                  </p>
+                </article>
               ))}
             </div>
           </div>
         </section>
 
-        <section id="social-proof" className="py-20 max-w-6xl mx-auto px-6 text-center border-b border-gray-100 dark:border-gray-800">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em] mb-12">Hanno scelto la chiarezza</p>
+        {/* Vantaggi */}
+        <section id="vantaggi" className="max-w-6xl mx-auto px-6 py-20 md:py-24">
+          <div className="max-w-2xl space-y-3 mb-14">
+            <h2
+              className={`text-2xl md:text-4xl font-display font-bold tracking-tight [text-wrap:balance] ${
+                isDark ? 'text-white' : 'text-slate-950'
+              }`}
+            >
+              Perché i team passano a Easy Decision
+            </h2>
+            <p className={`text-base ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              Meno attrito per chi vota, controllo completo per chi coordina e conformità normativa svizzera ed europea.
+            </p>
+          </div>
 
-          <div
-            className="logo-carousel-wrapper relative overflow-hidden py-2 [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]"
-            role="region"
-            aria-label="Aziende e progetti che usano easy decision"
-          >
-            <div className="animate-logo-carousel items-center">
-              {[0, 1].map((copyIndex) => {
-                const partners = [
-                  {
-                    name: 'Pratiko',
-                    href: 'https://pratiko.ch/',
-                    logo: '/logos/pratiko.webp',
-                    fullBleed: false,
-                    padClass: 'p-1',
-                    wordmarkClass: 'text-[#083344] dark:text-white'
-                  },
-                  {
-                    name: 'RankUpList',
-                    href: 'https://rankuplist.com/',
-                    logo: '/logos/rankuplist.png',
-                    fullBleed: false,
-                    padClass: 'p-1',
-                    wordmarkClass: 'text-[#0F3C78] dark:text-sky-300'
-                  },
-                  {
-                    name: 'SwissLeadFinder',
-                    href: 'https://swissleadfinder.ch/it',
-                    logo: '/logos/swissleadfinder.png',
-                    fullBleed: false,
-                    padClass: 'p-2.5',
-                    wordmarkClass: 'text-[#0F172A] dark:text-white'
-                  },
-                  {
-                    name: 'KarePet',
-                    href: 'https://karepet.app/en/',
-                    logo: '/logos/karepet.png',
-                    fullBleed: true,
-                    padClass: '',
-                    wordmarkClass: 'text-[#4A6B53] dark:text-emerald-300'
-                  },
-                  {
-                    name: 'EdilFree',
-                    href: 'https://edilfree.vercel.app/',
-                    logo: '/logos/edilfree.svg',
-                    fullBleed: true,
-                    padClass: '',
-                    wordmarkClass: 'text-[#2563EB] dark:text-blue-400'
-                  },
-                  {
-                    name: 'ReviewDesk',
-                    href: 'https://reviewdesk.ai.studio/',
-                    logo: '/logos/reviewdesk.jpg',
-                    fullBleed: false,
-                    padClass: 'p-2',
-                    wordmarkClass: 'text-[#16365B] dark:text-slate-100'
-                  },
-                  {
-                    name: 'CuraFamily',
-                    href: 'https://curafamily.ch/it',
-                    logo: '/logos/curafamily.png',
-                    fullBleed: false,
-                    padClass: 'p-1',
-                    wordmarkClass: 'text-[#047857] dark:text-emerald-400'
-                  }
-                ];
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Pillar 1: No registration for voters */}
+            <div
+              className={`lg:col-span-6 p-8 rounded-2xl border space-y-4 ${
+                isDark ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-slate-200'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                    isDark ? 'bg-blue-950 text-blue-400' : 'bg-blue-50 text-blue-600'
+                  }`}
+                >
+                  <UserCheck className="w-5 h-5" aria-hidden="true" />
+                </span>
+                <h3 className={`text-xl font-display font-bold ${isDark ? 'text-white' : 'text-slate-950'}`}>
+                  Nessuna registrazione per chi vota
+                </h3>
+              </div>
+              <p className={`text-sm leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                Il problema principale dei sondaggi interni è la bassa partecipazione. Con Easy Decision, solo chi crea la votazione accede alla dashboard: colleghi, soci e clienti votano dal link in 10 secondi senza password né app.
+              </p>
+              <div
+                className={`pt-3 border-t flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium ${
+                  isDark ? 'border-gray-800 text-slate-400' : 'border-slate-100 text-slate-500'
+                }`}
+              >
+                <span>Accesso istantaneo da browser</span>
+                <span aria-hidden="true">·</span>
+                <span>Protezione anti-voto doppio</span>
+              </div>
+            </div>
 
-                return (
+            {/* Pillar 2: Privacy LPD Svizzera & GDPR */}
+            <div
+              className={`lg:col-span-6 p-8 rounded-2xl border space-y-4 ${
+                isDark ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-slate-200'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                    isDark ? 'bg-blue-950 text-blue-400' : 'bg-blue-50 text-blue-600'
+                  }`}
+                >
+                  <ShieldCheck className="w-5 h-5" aria-hidden="true" />
+                </span>
+                <h3 className={`text-xl font-display font-bold ${isDark ? 'text-white' : 'text-slate-950'}`}>
+                  Privacy LPD Svizzera & GDPR
+                </h3>
+              </div>
+              <p className={`text-sm leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                Progettato secondo la Legge Federale sulla Protezione dei Dati (LPD) svizzera e il GDPR europeo. Scegli tra votazioni aperte via link, riservate al team o anonime, con storico completo esportabile in PDF e CSV.
+              </p>
+              <div
+                className={`pt-3 border-t flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium ${
+                  isDark ? 'border-gray-800 text-slate-400' : 'border-slate-100 text-slate-500'
+                }`}
+              >
+                <span>Controllo accessi granulare</span>
+                <span aria-hidden="true">·</span>
+                <span>Solo cookie tecnici essenziali</span>
+              </div>
+            </div>
+
+            {/* Pillar 3: 4 voting modes */}
+            <div
+              className={`lg:col-span-12 p-8 rounded-2xl border space-y-6 ${
+                isDark ? 'bg-gray-900/50 border-gray-800' : 'bg-slate-50 border-slate-200'
+              }`}
+            >
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <h3 className={`text-xl font-display font-bold ${isDark ? 'text-white' : 'text-slate-950'}`}>
+                    4 modalità di voto per ogni tipo di scelta
+                  </h3>
+                  <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                    Adatta il formato alla decisione, aggiungi una scadenza automatica e raccogli commenti ordinati.
+                  </p>
+                </div>
+                <span
+                  className={`inline-flex items-center gap-1.5 text-xs font-medium shrink-0 ${
+                    isDark ? 'text-slate-400' : 'text-slate-500'
+                  }`}
+                >
+                  <Clock className="w-4 h-4" aria-hidden="true" />
+                  <span>Chiusura automatica a scadenza</span>
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { name: 'Sì / No', desc: 'Approvazioni rapide, preventivi e delibere binarie.' },
+                  { name: 'Scelta Singola', desc: 'Una sola opzione vincente tra più candidati o date.' },
+                  { name: 'Scelta Multipla', desc: 'Raccolta di più preferenze e priorità di backlog.' },
+                  { name: 'Stelle 1–5', desc: 'Valutazione qualitativa di bozze, idee e fornitori.' }
+                ].map((mode) => (
                   <div
-                    key={copyIndex}
-                    aria-hidden={copyIndex === 1}
-                    className={`flex items-center shrink-0 gap-10 sm:gap-14 pr-10 sm:pr-14 ${copyIndex === 1 ? 'logo-carousel-duplicate' : ''}`}
+                    key={mode.name}
+                    className={`p-4 rounded-xl border space-y-1.5 ${
+                      isDark ? 'bg-gray-950 border-gray-800' : 'bg-white border-slate-200'
+                    }`}
                   >
-                    {partners.map((item) => (
-                      <a
-                        key={`${copyIndex}-${item.href}`}
-                        href={item.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        tabIndex={copyIndex === 1 ? -1 : undefined}
-                        className="group inline-flex items-center gap-3.5 shrink-0 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-2xl"
+                    <p className={`text-sm font-display font-bold ${isDark ? 'text-white' : 'text-slate-950'}`}>
+                      {mode.name}
+                    </p>
+                    <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      {mode.desc}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ Accordion (4 questions aligned with JSON-LD) */}
+        <section
+          id="faq"
+          className={`border-t py-20 md:py-24 ${
+            isDark ? 'border-gray-800 bg-gray-900/20' : 'border-slate-200 bg-slate-50/50'
+          }`}
+        >
+          <div className="max-w-3xl mx-auto px-6">
+            <div className="space-y-3 mb-12">
+              <h2
+                className={`text-2xl md:text-4xl font-display font-bold tracking-tight ${
+                  isDark ? 'text-white' : 'text-slate-950'
+                }`}
+              >
+                Domande frequenti
+              </h2>
+              <p className={`text-base ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                Risposte rapide su costi, accesso dei votanti, sicurezza e modalità di voto.
+              </p>
+            </div>
+
+            <div
+              className={`divide-y rounded-2xl border overflow-hidden ${
+                isDark ? 'divide-gray-800 border-gray-800 bg-gray-950' : 'divide-slate-200 border-slate-200 bg-white'
+              }`}
+            >
+              {FAQS.map((faq, idx) => {
+                const isOpen = openFaqIndex === idx;
+                return (
+                  <div key={faq.q}>
+                    <button
+                      type="button"
+                      aria-expanded={isOpen}
+                      aria-controls={`faq-panel-${idx}`}
+                      onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
+                      className="w-full px-6 py-5 text-left flex items-center justify-between gap-4 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600"
+                    >
+                      <span className={`text-sm md:text-base font-semibold ${isDark ? 'text-white' : 'text-slate-950'}`}>
+                        {faq.q}
+                      </span>
+                      <ChevronDown
+                        className={`w-4 h-4 shrink-0 transition-transform duration-200 ${
+                          isOpen ? 'rotate-180 text-blue-600' : 'text-slate-400'
+                        }`}
+                        aria-hidden="true"
+                      />
+                    </button>
+                    {isOpen && (
+                      <div
+                        id={`faq-panel-${idx}`}
+                        className={`px-6 pb-5 text-sm leading-relaxed ${
+                          isDark ? 'text-slate-300' : 'text-slate-600'
+                        }`}
                       >
-                        <span
-                          className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden shrink-0 flex items-center justify-center transition-transform duration-200 group-hover:scale-105 shadow-sm ${
-                            item.fullBleed
-                              ? ''
-                              : `bg-white border border-slate-200/80 dark:border-slate-700/60 ${item.padClass}`
-                          }`}
-                        >
-                          <img
-                            src={item.logo}
-                            alt={copyIndex === 0 ? `${item.name} logo` : ''}
-                            referrerPolicy="no-referrer"
-                            loading="lazy"
-                            className={`w-full h-full ${item.fullBleed ? 'object-cover' : 'object-contain'}`}
-                          />
-                        </span>
-                        <span className={`text-lg sm:text-xl font-bold font-display tracking-tight whitespace-nowrap transition-opacity group-hover:opacity-80 ${item.wordmarkClass}`}>
-                          {item.name}
-                        </span>
-                      </a>
-                    ))}
+                        {faq.a}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -570,98 +985,67 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
           </div>
         </section>
 
-        <section id="faq" className="py-24 max-w-4xl mx-auto px-6">
-          <div className="text-center mb-16 space-y-4">
-            <h2 className="text-3xl md:text-4xl font-display font-bold text-slate-950 dark:text-white">Domande frequenti</h2>
-            <p className="text-slate-500 dark:text-slate-400">Tutto quello che devi sapere prima di iniziare.</p>
-          </div>
-
-          <div className="space-y-4">
-            {[
-              {
-                q: "I partecipanti devono creare un account?",
-                a: "Sì, per garantire l'integrità del voto e la tracciabilità delle decisioni, utilizziamo l'autenticazione Google. Questo impedisce voti doppi o non autorizzati."
-              },
-              {
-                q: "È possibile esportare i risultati?",
-                a: "Assolutamente. Ogni votazione conclusa può essere esportata in formato PDF (per verbali ufficiali) o CSV (per analisi dati in Excel) con un semplice clic."
-              },
-              {
-                q: "Come vengono gestiti i dati aziendali?",
-                a: "I dati sono archiviati su Firebase Firestore con regole di sicurezza che permettono l'accesso solo agli utenti autorizzati. Non condividiamo mai i dati con terze parti."
-              },
-              {
-                q: "Funziona anche su smartphone?",
-                a: "Sì, easy decision è completamente responsive. Il tuo team può votare comodamente da desktop, tablet o smartphone senza dover installare alcuna app."
-              },
-              {
-                q: "Posso cambiare il mio voto?",
-                a: "No. Per mantenere la trasparenza e la validità statistica del processo decisionale, una volta che un voto viene inviato non può essere modificato."
-              }
-            ].map((faq, idx) => (
-              <details
-                key={idx}
-                className={`border rounded-2xl overflow-hidden group transition ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}
-              >
-                <summary className="w-full px-6 py-4 text-left font-bold text-sm flex items-center justify-between cursor-pointer list-none">
-                  <span className="pr-4">{faq.q}</span>
-                  <ChevronDown className="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180" />
-                </summary>
-                <div className="px-6 pb-5 text-xs text-gray-500 dark:text-gray-400 leading-relaxed border-t border-gray-100 dark:border-gray-800 pt-3">
-                  {faq.a}
-                </div>
-              </details>
-            ))}
-          </div>
-        </section>
-
-        <section id="cta-final" className="py-24 px-6">
-          <div className={`max-w-4xl mx-auto rounded-[3rem] p-12 md:p-20 text-center space-y-10 border ${isDark ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-900 border-slate-800 text-white shadow-2xl shadow-slate-900/20'}`}>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-bold tracking-wide">
-              <span>Accesso Anticipato Gratuito – tutte le funzionalità incluse</span>
+        {/* Final Pre-Footer CTA */}
+        <section className="max-w-6xl mx-auto px-6 py-20">
+          <div
+            className={`rounded-3xl p-10 md:p-16 border flex flex-col md:flex-row md:items-center md:justify-between gap-8 ${
+              isDark ? 'bg-gray-900 border-gray-800 text-white' : 'bg-slate-900 border-slate-800 text-white'
+            }`}
+          >
+            <div className="space-y-3 max-w-xl">
+              <p className="text-xs font-semibold text-blue-400">
+                Accesso Anticipato Gratuito — Tutto incluso
+              </p>
+              <h2 className="text-2xl md:text-4xl font-display font-bold tracking-tight leading-tight [text-wrap:balance]">
+                Pronto a prendere la prossima decisione senza riunioni?
+              </h2>
+              <p className="text-sm md:text-base text-slate-300 leading-relaxed">
+                Crea gratis la tua prima votazione in 60 secondi e condividi il link: chi vota non deve registrarsi.
+              </p>
             </div>
-            <h2 className="text-4xl md:text-5xl font-display font-bold tracking-tight leading-tight">
-              Pronti a decidere in pochi minuti?
-            </h2>
-            <p className="text-lg opacity-80 max-w-xl mx-auto">
-              Unisciti ai team che hanno già eliminato il caos decisionale. Crea la tua prima votazione oggi stesso.
-            </p>
-            <div className="pt-4">
+
+            <div className="flex flex-col items-start md:items-end gap-3 shrink-0">
               <button
+                type="button"
                 onClick={() => handleCtaClick('final_cta')}
-                className={`px-10 py-5 rounded-2xl font-bold text-lg transition shadow-xl inline-flex items-center gap-3 group ${isDark ? 'bg-white text-blue-600 hover:bg-gray-100' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-600/25'}`}
+                className="px-7 py-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base transition-colors cursor-pointer inline-flex items-center gap-2 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
               >
-                Provalo gratis
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                <span>Crea gratis la tua prima votazione</span>
+                <ArrowRight className="w-4 h-4" aria-hidden="true" />
               </button>
+              <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+                <Lock className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>0 CHF / 0 EUR · Conformità LPD Svizzera & GDPR</span>
+              </span>
             </div>
           </div>
         </section>
       </main>
 
-      <Footer 
-        isDark={isDark} 
-        onViewPrivacy={() => openLegal('privacy')}
-        onViewCookies={() => openLegal('cookie')}
+      <Footer
+        isDark={isDark}
+        onViewPrivacy={() => setLegalModal({ isOpen: true, type: 'privacy' })}
+        onViewCookies={() => setLegalModal({ isOpen: true, type: 'cookie' })}
       />
 
-      <LegalModal 
+      <LegalModal
         isOpen={legalModal.isOpen}
         onClose={() => setLegalModal({ ...legalModal, isOpen: false })}
         type={legalModal.type}
         isDark={isDark}
       />
 
-      {/* Sticky Mobile CTA */}
-      <div className="md:hidden fixed bottom-6 left-6 right-6 z-50">
+      {/* Compact Mobile Sticky CTA (< 15% mobile viewport height) */}
+      <div className="md:hidden fixed bottom-3 left-4 right-4 z-40">
         <button
+          type="button"
           onClick={() => handleCtaClick('mobile_sticky')}
-          className="w-full py-4 rounded-2xl bg-blue-600 text-white font-bold shadow-2xl shadow-blue-600/40 flex items-center justify-center gap-2 border border-blue-500"
+          className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-lg flex items-center justify-center gap-2 cursor-pointer"
         >
-          Provalo gratis <ArrowRight className="w-4 h-4" />
+          <span>Crea votazione gratis</span>
+          <ArrowRight className="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
     </div>
   );
 };
-
