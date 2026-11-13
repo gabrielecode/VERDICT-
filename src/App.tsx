@@ -115,6 +115,13 @@ export default function App() {
 
   useEffect(() => {
     if (!publicDecisionId) return;
+    document.title = publicDecision?.title
+      ? `${publicDecision.title} | Easy Decision`
+      : 'Votazione | Easy Decision';
+  }, [publicDecisionId, publicDecision?.title]);
+
+  useEffect(() => {
+    if (!publicDecisionId) return;
     let unsubSnapshot: (() => void) | undefined;
     let unsubVoteSnapshot: (() => void) | undefined;
 
