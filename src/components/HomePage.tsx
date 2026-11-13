@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Vote, 
   ChevronDown, 
@@ -13,18 +13,23 @@ import {
   Clock,
   MessageSquare,
   BarChart3,
-  FileText
+  FileText,
+  Mail,
+  Loader2
 } from 'lucide-react';
 import { Footer } from './Footer';
 import { LegalModal } from './LegalModal';
+import { sendEmailLink } from '../lib/firebase';
+import { ToastType } from '../types';
 
 interface HomePageProps {
   onLoginSuccess: () => void;
   isDark: boolean;
   toggleDarkMode: () => void;
+  addToast: (message: string, type: ToastType) => void;
 }
 
-export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, toggleDarkMode }) => {
+export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, toggleDarkMode, addToast }) => {
   useEffect(() => {
     document.title = "easy decision | Software per decisioni di team: votazioni e sondaggi online";
   }, []);
@@ -75,6 +80,25 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
 
   const openLegal = (type: 'privacy' | 'cookie') => {
     setLegalModal({ isOpen: true, type });
+  };
+
+  const [emailInput, setEmailInput] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailInput.trim()) return;
+    setEmailLoading(true);
+    try {
+      await sendEmailLink(emailInput.trim());
+      setEmailSent(true);
+      addToast('Controlla la tua email', 'success');
+    } catch (err: any) {
+      addToast(err?.message || 'Errore durante l\'invio dell\'email.', 'error');
+    } finally {
+      setEmailLoading(false);
+    }
   };
 
   const faqs = [
@@ -149,25 +173,45 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
             <p className={`text-lg md:text-xl leading-relaxed max-w-xl ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
               Crea votazioni chiare, raccogli feedback e ottieni risultati in tempo reale. La soluzione professionale per PM e team che vogliono agire, non solo discutere.
             </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <button
-                onClick={() => handleCtaClick('hero')}
-                className="w-full sm:w-auto px-8 py-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-base transition shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 group"
-              >
-                Provalo gratis
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
-              <button
-                onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
-                className={`w-full sm:w-auto px-8 py-4 rounded-xl font-bold text-base transition border flex items-center justify-center gap-2 ${
-                  isDark 
-                    ? 'border-gray-800 bg-gray-900 text-white hover:bg-gray-800' 
-                    : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Guarda come funziona
-              </button>
+
+
+            <div className="flex flex-col gap-4 pt-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button
+                  onClick={() => handleCtaClick('hero')}
+                  className="w-full sm:w-auto px-8 py-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-base transition shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 group"
+                >
+                  Provalo gratis con Google
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </div>
+
+              <div className={`p-6 rounded-2xl border ${isDark ? 'border-gray-800 bg-gray-900/50' : 'border-gray-200 bg-white shadow-sm'} max-w-md space-y-3`}>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Accesso senza password via email</h3>
+                {emailSent ? (
+                  <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold text-center">
+                    Controlla la tua email
+                  </div>
+                ) : (
+                  <form onSubmit={handleEmailLogin} className="flex gap-2">
+                    <input
+                      type="email"
+                      required
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      placeholder="nome@azienda.it"
+                      className="flex-1 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      type="submit"
+                      disabled={emailLoading}
+                      className="px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    >
+                      {emailLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />} Invia Link
+                    </button>
+                  </form>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-4 pt-2">

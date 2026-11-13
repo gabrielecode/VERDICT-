@@ -34,6 +34,12 @@ export interface Comment {
   uid?: string;
 }
 
+export interface FinalDecision {
+  text: string;
+  responsible: string;
+  date: string;
+}
+
 export type DecisionType = 'single' | 'multiple' | 'yes_no' | 'rating';
 export type DecisionAudience = 'org' | 'private' | 'link';
 
@@ -64,6 +70,7 @@ export interface Decision {
   createdAt: string;
   attachments?: string[];
   votes?: Vote[];
+  finalDecision?: FinalDecision;
 }
 
 export interface TeamMember {

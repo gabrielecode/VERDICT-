@@ -20,6 +20,7 @@ interface DecisionDetailProps {
   onBack: () => void;
   onVote: (decisionId: string, optionIds: string[], ratingValue?: number) => void;
   onAddComment: (decisionId: string, text: string) => void;
+  onSaveFinalDecision?: (decisionId: string, finalDecision: { text: string; responsible: string; date: string }) => void;
 }
 
 export const DecisionDetail: React.FC<DecisionDetailProps> = ({
@@ -27,6 +28,7 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
   onBack,
   onVote,
   onAddComment,
+  onSaveFinalDecision,
 }) => {
   const [timeLeft, setTimeLeft] = useState<TimeRemaining>(getTimeRemaining(decision.deadline));
   const [newComment, setNewComment] = useState('');
@@ -37,6 +39,10 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
   const [userVotedOptions, setUserVotedOptions] = useState<string[]>([]);
   const [userRating, setUserRating] = useState<number | undefined>(undefined);
   const [hasVoted, setHasVoted] = useState(false);
+  const [finalText, setFinalText] = useState(decision.finalDecision?.text || '');
+  const [finalResp, setFinalResp] = useState(decision.finalDecision?.responsible || '');
+  const [finalDate, setFinalDate] = useState(decision.finalDecision?.date || new Date().toISOString().split('T')[0]);
+  const [isEditingFinal, setIsEditingFinal] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -97,8 +103,13 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
       if (/^[=+\-@]/.test(s)) s = "'" + s;
       return '"' + s.replace(/"/g, '""') + '"';
     };
-    const headers = ['Opzione', 'Voti'].map(esc);
-    const rows = decision.options.map(opt => [esc(opt.text), esc(opt.votes)]);
+    const headers = ['Opzione', 'Voti', 'Esito'].map(esc);
+    const outcomeText = decision.finalDecision ? decision.finalDecision.text : 'N/D';
+    const rows = decision.options.map((opt, idx) => [
+      esc(opt.text),
+      esc(opt.votes),
+      idx === 0 ? esc(outcomeText) : esc('')
+    ]);
     const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -216,7 +227,7 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
           </button>
           
           <div className="flex items-center gap-3 ml-4 border-l border-slate-200 dark:border-slate-800 pl-4">
-            <button onClick={handleExportCSV} className="text-[13px] font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition cursor-pointer">CSV</button>
+            <button onClick={handleExportCSV} className="text-[13px] font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition cursor-pointer">Esporta CSV</button>
             <button onClick={handleExportPDF} className="text-[13px] font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition cursor-pointer">PDF</button>
           </div>
         </div>
@@ -277,6 +288,80 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
               </div>
             )}
           </div>
+
+          {isExpired && (
+            <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 border border-blue-200 dark:border-blue-900/50 shadow-xs space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-bold text-gray-900 dark:text-white">Decisione Presa (Verdetto)</h2>
+                {decision.finalDecision && !isEditingFinal && auth.currentUser?.uid === decision.creator?.uid && (
+                  <button onClick={() => setIsEditingFinal(true)} className="text-xs font-bold text-blue-600 hover:underline">Modifica</button>
+                )}
+              </div>
+
+              {decision.finalDecision && !isEditingFinal ? (
+                <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-2xl border border-blue-100 dark:border-blue-900/40 space-y-3">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">{decision.finalDecision.text}</p>
+                  <div className="flex justify-between text-xs text-gray-500 pt-2 border-t border-blue-100 dark:border-blue-900/20">
+                    <span>Responsabile: <strong className="text-gray-800 dark:text-gray-200">{decision.finalDecision.responsible}</strong></span>
+                    <span>Data: <strong className="text-gray-800 dark:text-gray-200">{decision.finalDecision.date}</strong></span>
+                  </div>
+                </div>
+              ) : auth.currentUser?.uid === decision.creator?.uid ? (
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  if (onSaveFinalDecision && finalText.trim()) {
+                    onSaveFinalDecision(decision.id, { text: finalText.trim(), responsible: finalResp.trim() || decision.creator.name, date: finalDate });
+                    setIsEditingFinal(false);
+                  }
+                }} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Testo breve della decisione</label>
+                    <textarea
+                      required
+                      rows={2}
+                      value={finalText}
+                      onChange={(e) => setFinalText(e.target.value)}
+                      placeholder="es. Approvata adozione fornitore"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Responsabile</label>
+                      <input
+                        type="text"
+                        required
+                        value={finalResp}
+                        onChange={(e) => setFinalResp(e.target.value)}
+                        placeholder="es. Mario Rossi"
+                        className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Data</label>
+                      <input
+                        type="date"
+                        required
+                        value={finalDate}
+                        onChange={(e) => setFinalDate(e.target.value)}
+                        className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    {isEditingFinal && (
+                      <button type="button" onClick={() => setIsEditingFinal(false)} className="px-4 py-2 text-xs font-bold text-gray-600">Annulla</button>
+                    )}
+                    <button type="submit" className="px-6 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl shadow-md">Salva Decisione</button>
+                  </div>
+                </form>
+              ) : (
+                <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl text-center">
+                  <p className="text-xs text-slate-500">In attesa che il creatore compili la decisione presa.</p>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 border border-gray-200 dark:border-gray-800 shadow-xs space-y-6">
             <div className="flex items-center justify-between">

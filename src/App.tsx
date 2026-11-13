@@ -52,6 +52,7 @@ import {
   signInWithGoogle, 
   signInWithGoogleRedirect, 
   checkRedirectResult, 
+  completeEmailLinkSignIn,
   parseAuthError, 
   logout, 
   signInAnon,
@@ -354,6 +355,16 @@ export default function App() {
   const [onboardingTab, setOnboardingTab] = useState<'create' | 'join'>('create');
 
   useEffect(() => {
+    completeEmailLinkSignIn()
+      .then((result) => {
+        if (result?.user) {
+          addToast(`Benvenuto, ${result.user.email || 'Utente'}!`, 'success');
+        }
+      })
+      .catch((error) => {
+        addToast(parseAuthError(error).message, 'error');
+      });
+
     checkRedirectResult()
       .then((result) => {
         if (result?.user) {
@@ -766,6 +777,18 @@ export default function App() {
     }
   };
 
+  const handleSaveFinalDecision = async (decisionId: string, finalDecision: { text: string; responsible: string; date: string }) => {
+    try {
+      await updateDoc(doc(db, 'decisions', decisionId), {
+        finalDecision
+      });
+      addToast('Decisione presa salvata!', 'success');
+    } catch (e) {
+      const msg = handleFirestoreError(e, OperationType.UPDATE, `decisions/${decisionId}`);
+      addToast(msg, 'error');
+    }
+  };
+
   const filteredDecisions = useMemo(() => {
     return decisions.filter(d => {
       if (d.audience === 'private' && d.creator?.uid !== user?.uid && !isOwner) {
@@ -809,7 +832,7 @@ export default function App() {
     return (
       <div className={`min-h-screen ${isDark ? 'dark' : ''}`}>
         <ToastContainer toasts={toasts} removeToast={removeToast} />
-        <HomePage onLoginSuccess={handleLogin} isDark={isDark} toggleDarkMode={() => setIsDark(!isDark)} />
+        <HomePage onLoginSuccess={handleLogin} isDark={isDark} toggleDarkMode={() => setIsDark(!isDark)} addToast={addToast} />
         <AuthDomainModal
           isOpen={showDomainModal}
           onClose={() => setShowDomainModal(false)}
@@ -1067,6 +1090,7 @@ export default function App() {
                       onBack={() => setSelectedDecisionId(null)}
                       onVote={handleVote}
                       onAddComment={handleAddComment}
+                      onSaveFinalDecision={handleSaveFinalDecision}
                     />
                   </Suspense>
                 </motion.div>

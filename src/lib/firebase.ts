@@ -7,13 +7,15 @@ import {
   getRedirectResult,
   signInAnonymously,
   signOut, 
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink,
   User,
   AuthError
 } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import firebaseConfigFile from '../../firebase-applet-config.json' with { type: 'json' };
 
-// Support both Vercel environment variables (VITE_FIREBASE_*) and firebase-applet-config.json
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseConfigFile.apiKey,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfigFile.authDomain,
@@ -38,7 +40,6 @@ export const signInWithGoogle = async () => {
     return await signInWithPopup(auth, googleAuthProvider);
   } catch (error: any) {
     if (error?.code === 'auth/popup-blocked' || error?.code === 'auth/cancelled-popup-request') {
-      console.warn('Popup bloccato dal browser, avvio l\'accesso tramite redirect...');
       await signInWithRedirect(auth, googleAuthProvider);
       return;
     }
@@ -52,9 +53,32 @@ export const checkRedirectResult = async () => {
   try {
     return await getRedirectResult(auth);
   } catch (error) {
-    console.error('Errore nel recupero del risultato di redirect:', error);
     throw error;
   }
+};
+
+export const sendEmailLink = async (email: string) => {
+  const actionCodeSettings = {
+    url: window.location.origin,
+    handleCodeInApp: true,
+  };
+  await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+  window.localStorage.setItem('emailForSignIn', email);
+};
+
+export const completeEmailLinkSignIn = async () => {
+  if (isSignInWithEmailLink(auth, window.location.href)) {
+    let email = window.localStorage.getItem('emailForSignIn');
+    if (!email) {
+      email = window.prompt('Inserisci la tua email per completare l\'accesso:');
+    }
+    if (email) {
+      const result = await signInWithEmailLink(auth, email, window.location.href);
+      window.localStorage.removeItem('emailForSignIn');
+      return result;
+    }
+  }
+  return null;
 };
 
 export const logout = () => signOut(auth);

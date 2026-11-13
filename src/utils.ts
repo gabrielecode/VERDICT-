@@ -55,20 +55,7 @@ export function getTimeRemaining(deadlineStr: string): TimeRemaining {
 }
 
 export function getCategoryStyles(category: string): { bg: string; text: string; border: string } {
-  switch (category.toLowerCase()) {
-    case 'design':
-      return { bg: 'bg-blue-50/70', text: 'text-blue-600', border: 'border-blue-100' };
-    case 'cultura':
-      return { bg: 'bg-emerald-50/70', text: 'text-emerald-600', border: 'border-emerald-100' };
-    case 'team':
-      return { bg: 'bg-amber-50/70', text: 'text-amber-600', border: 'border-amber-100' };
-    case 'strategia':
-      return { bg: 'bg-rose-50/70', text: 'text-rose-600', border: 'border-rose-100' };
-    case 'logistica':
-      return { bg: 'bg-sky-50/70', text: 'text-sky-600', border: 'border-sky-100' };
-    default:
-      return { bg: 'bg-slate-50/70', text: 'text-slate-600', border: 'border-slate-100' };
-  }
+  return { bg: 'bg-slate-50/70', text: 'text-slate-600', border: 'border-slate-100' };
 }
 
 export function formatDate(dateStr: string): string {

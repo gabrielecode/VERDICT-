@@ -82,6 +82,17 @@ export const DecisionCard: React.FC<DecisionCardProps> = ({ decision, onClick })
         <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-2 mb-6 font-normal leading-relaxed">
           {decision.description}
         </p>
+
+        {decision.finalDecision && (
+          <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 rounded-xl text-xs space-y-1">
+            <span className="font-bold text-blue-700 dark:text-blue-400 block">Decisione presa:</span>
+            <p className="text-slate-700 dark:text-slate-300 font-medium">{decision.finalDecision.text}</p>
+            <div className="flex justify-between text-[11px] text-slate-500 pt-1 border-t border-blue-100 dark:border-blue-900/20">
+              <span>Resp: {decision.finalDecision.responsible}</span>
+              <span>{decision.finalDecision.date}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="pt-4 border-t border-slate-100 dark:border-slate-800/50">
