@@ -99,32 +99,34 @@ export default function App() {
 
   useEffect(() => {
     if (!publicDecisionId) return;
-    if (!auth.currentUser) {
-      signInAnon().catch(() => {});
-    }
-  }, [publicDecisionId]);
-
-  useEffect(() => {
-    if (!publicDecisionId) return;
-    const unsub = onSnapshot(doc(db, 'decisions', publicDecisionId), (snap) => {
-      if (snap.exists()) {
-        const item = snap.data();
-        setPublicDecision({ ...item, id: snap.id } as Decision);
+    let unsubSnapshot: (() => void) | undefined;
+    const unsubAuth = onAuthStateChanged(auth, (u) => {
+      if (!u) {
+        signInAnon().catch(() => {});
+        return;
       }
-      setPublicLoading(false);
-    }, () => {
-      setPublicLoading(false);
-    });
+      if (unsubSnapshot) unsubSnapshot();
+      unsubSnapshot = onSnapshot(doc(db, 'decisions', publicDecisionId), (snap) => {
+        if (snap.exists()) {
+          const item = snap.data();
+          setPublicDecision({ ...item, id: snap.id } as Decision);
+        }
+        setPublicLoading(false);
+      }, () => {
+        setPublicLoading(false);
+      });
 
-    if (auth.currentUser) {
-      getDoc(doc(db, 'decisions', publicDecisionId, 'votes', auth.currentUser.uid)).then(snap => {
+      getDoc(doc(db, 'decisions', publicDecisionId, 'votes', u.uid)).then(snap => {
         if (snap.exists()) {
           setPublicVoted(true);
         }
       }).catch(() => {});
-    }
+    });
 
-    return () => unsub();
+    return () => {
+      unsubAuth();
+      if (unsubSnapshot) unsubSnapshot();
+    };
   }, [publicDecisionId]);
 
 
@@ -151,6 +153,12 @@ export default function App() {
     }
 
     const totalVotes = publicDecision.options.reduce((sum, opt) => sum + opt.votes, 0);
+    const isExpired = getTimeRemaining(publicDecision.deadline).status === 'expired';
+    const resultsVis = publicDecision.resultsVisibility || 'always';
+    const canShowResults =
+      resultsVis === 'always' ||
+      (resultsVis === 'after_vote' && publicVoted) ||
+      (resultsVis === 'closed' && isExpired);
 
     const handlePublicVote = async () => {
       if (!auth.currentUser) return;
@@ -165,7 +173,7 @@ export default function App() {
             decisionId: publicDecisionId,
             optionIds: publicSelectedOptions,
             ratingValue: publicPendingRating,
-            voterName: publicVoterName
+            voterName: publicDecision.isAnonymous ? undefined : publicVoterName
           })
         });
         if (!response.ok) {
@@ -209,7 +217,7 @@ export default function App() {
             <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
               <span>{publicDecision.category}</span>
               <span aria-hidden="true" className="opacity-40">·</span>
-              <span>Pubblico</span>
+              <span>Link</span>
             </div>
             <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white font-display tracking-tight leading-tight">
               {publicDecision.title}
@@ -224,7 +232,7 @@ export default function App() {
               <div>
                 <h2 className="text-base font-bold text-gray-900 dark:text-white">Esprimi il tuo voto</h2>
                 <p className="text-gray-500 text-xs mt-0.5">
-                  {publicVoted ? 'Voto registrato con successo.' : 'Seleziona un\'opzione:'}
+                  {isExpired ? 'Votazione chiusa.' : publicVoted ? 'Voto registrato con successo.' : 'Seleziona un\'opzione:'}
                 </p>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-gray-500 font-semibold bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-lg">
@@ -233,7 +241,7 @@ export default function App() {
               </div>
             </div>
 
-            {!publicVoted && (
+            {!publicVoted && !isExpired && !publicDecision.isAnonymous && (
               <div className="space-y-3">
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Il tuo nome (Opzionale)</label>
                 <input
@@ -255,21 +263,29 @@ export default function App() {
 
                   return (
                     <div key={opt.id} className="relative">
-                      {publicVoted ? (
+                      {publicVoted || isExpired ? (
                         <div className="border border-gray-200 dark:border-gray-800 rounded-2xl p-5 relative bg-white dark:bg-gray-950">
-                          <motion.div initial={{ width: 0 }} animate={{ width: `${percentage}%` }} className="absolute top-0 bottom-0 left-0 bg-blue-600 opacity-[0.04] -z-10" />
+                          {canShowResults && (
+                            <motion.div initial={{ width: 0 }} animate={{ width: `${percentage}%` }} className="absolute top-0 bottom-0 left-0 bg-blue-600 opacity-[0.04] -z-10" />
+                          )}
                           <div className="flex items-center justify-between relative z-10">
                             <div className="flex items-center gap-4 flex-1 min-w-0">
                               <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 flex items-center justify-center font-bold text-sm shrink-0">{optionLetter}</div>
                               <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">{opt.text}</span>
                             </div>
                             <div className="text-right shrink-0">
-                              <span className="text-base font-black text-blue-600">{percentage.toFixed(0)}%</span>
+                              {canShowResults ? (
+                                <span className="text-base font-black text-blue-600">{percentage.toFixed(0)}%</span>
+                              ) : (
+                                <span className="text-xs text-slate-400 font-medium">Risultati nascosti</span>
+                              )}
                             </div>
                           </div>
-                          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 dark:bg-gray-800 rounded-b-2xl">
-                            <motion.div initial={{ width: 0 }} animate={{ width: `${percentage}%` }} className="h-full bg-blue-600" />
-                          </div>
+                          {canShowResults && (
+                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 dark:bg-gray-800 rounded-b-2xl">
+                              <motion.div initial={{ width: 0 }} animate={{ width: `${percentage}%` }} className="h-full bg-blue-600" />
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <button
@@ -293,7 +309,7 @@ export default function App() {
                 })}
               </div>
 
-              {!publicVoted && publicSelectedOptions.length > 0 && (
+              {!publicVoted && !isExpired && publicSelectedOptions.length > 0 && (
                 <div className="flex justify-end pt-4">
                   <button
                     onClick={handlePublicVote}
@@ -512,7 +528,9 @@ export default function App() {
         name: orgNameInput.trim(),
         ownerUid: user.uid,
         createdAt: new Date().toISOString(),
-        inviteCode: inviteCode
+        inviteCode: inviteCode,
+        plan: 'trial',
+        trialEndsAt: Timestamp.fromDate(new Date(Date.now() + 14 * 86400000))
       });
 
       await setDoc(doc(db, 'inviteCodes', inviteCode), {
@@ -560,7 +578,8 @@ export default function App() {
         name: user.displayName || 'Membro',
         email: user.email || '',
         joinedAt: new Date().toISOString(),
-        avatar: user.photoURL || ''
+        avatar: user.photoURL || '',
+        code: code
       });
 
       await setDoc(doc(db, 'users', user.uid), {
@@ -644,6 +663,31 @@ export default function App() {
 
 
 
+  const { isTrialActive, isTrialExpired, trialDaysRemaining } = useMemo(() => {
+    if (!org) {
+      return { isTrialActive: false, isTrialExpired: false, trialDaysRemaining: 0 };
+    }
+    const now = Date.now();
+    const trialEndsAtMs = org.trialEndsAt?.toMillis
+      ? org.trialEndsAt.toMillis()
+      : (org.trialEndsAt as any)?.seconds
+      ? (org!.trialEndsAt as any).seconds * 1000
+      : org.trialEndsAt instanceof Date
+      ? org.trialEndsAt.getTime()
+      : typeof org.trialEndsAt === 'string'
+      ? new Date(org.trialEndsAt).getTime()
+      : 0;
+
+    const isTrialActive = Boolean(org.plan === 'trial' && trialEndsAtMs > now);
+    const trialDaysRemaining = Math.max(1, Math.ceil((trialEndsAtMs - now) / 86400000));
+    const isTrialExpired = Boolean(
+      org.plan !== 'pro' &&
+      (org.plan === 'expired' || (org.plan === 'trial' && trialEndsAtMs <= now) || (trialEndsAtMs > 0 && trialEndsAtMs <= now))
+    );
+
+    return { isTrialActive, isTrialExpired, trialDaysRemaining };
+  }, [org]);
+
   const activeDecision = useMemo(() => {
     return decisions.find(d => d.id === selectedDecisionId) || null;
   }, [decisions, selectedDecisionId]);
@@ -679,7 +723,7 @@ export default function App() {
   };
 
   const handlePublishDecision = async (newDecision: Omit<Decision, 'id'>) => {
-    if (!user || !userOrgId) return;
+    if (!user || !userOrgId || isTrialExpired) return;
     try {
       const deadlineDate = new Date(newDecision.deadline);
       await addDoc(collection(db, 'decisions'), {
@@ -1029,8 +1073,16 @@ export default function App() {
 
         <div className={`p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 space-y-3.5 ${isSidebarOpen ? 'block' : 'hidden md:block'}`}>
           <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-3 rounded-xl transition duration-150 shadow-sm shadow-blue-100 cursor-pointer"
+            disabled={isTrialExpired}
+            onClick={() => {
+              if (!isTrialExpired) setIsCreateModalOpen(true);
+            }}
+            title={isTrialExpired ? 'Prova terminata - Passa a Pro' : undefined}
+            className={`w-full flex items-center justify-center gap-2 font-bold text-xs py-3 rounded-xl transition duration-150 shadow-sm shadow-blue-100 ${
+              isTrialExpired
+                ? 'bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
+            }`}
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
             Nuova Proposta
@@ -1085,6 +1137,35 @@ export default function App() {
             </button>
           </div>
         </header>
+
+        {isTrialActive && (
+          <div className="bg-blue-50 dark:bg-blue-950/40 border-b border-blue-100 dark:border-blue-900/40 px-6 py-2.5 flex items-center justify-between text-xs text-blue-900 dark:text-blue-200">
+            <div className="flex items-center gap-2 font-medium">
+              <Sparkles className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span>Prova gratuita: {trialDaysRemaining} {trialDaysRemaining === 1 ? 'giorno rimasto' : 'giorni rimasti'}</span>
+            </div>
+            <a
+              href="mailto:info@sititicino.ch"
+              className="font-bold text-blue-600 dark:text-blue-400 hover:underline shrink-0 ml-4"
+            >
+              Passa a Pro
+            </a>
+          </div>
+        )}
+
+        {isTrialExpired && (
+          <div className="bg-red-600 text-white px-6 py-2.5 flex items-center justify-between text-xs font-medium shadow-sm">
+            <div className="flex items-center gap-2 font-bold">
+              <span>Prova terminata</span>
+            </div>
+            <a
+              href="mailto:info@sititicino.ch"
+              className="bg-white text-red-600 font-bold px-3 py-1 rounded-lg hover:bg-red-50 transition shrink-0 ml-4 shadow-xs"
+            >
+              Passa a Pro
+            </a>
+          </div>
+        )}
 
         <div className="flex-1 px-6 py-8 max-w-5xl w-full mx-auto">
           {loadingDecisions && decisions.length === 0 ? (
@@ -1211,10 +1292,10 @@ export default function App() {
       />
 
       <AnimatePresence>
-        {isCreateModalOpen && (
+        {isCreateModalOpen && !isTrialExpired && (
           <Suspense fallback={null}>
             <CreationModal
-              isOpen={isCreateModalOpen}
+              isOpen={isCreateModalOpen && !isTrialExpired}
               onClose={() => setIsCreateModalOpen(false)}
               onPublish={handlePublishDecision}
             />
@@ -1284,8 +1365,16 @@ export default function App() {
         </button>
         <div className="flex items-center justify-center -mt-6">
           <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg border-4 border-white dark:border-gray-950"
+            disabled={isTrialExpired}
+            onClick={() => {
+              if (!isTrialExpired) setIsCreateModalOpen(true);
+            }}
+            title={isTrialExpired ? 'Prova terminata - Passa a Pro' : undefined}
+            className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg border-4 border-white dark:border-gray-950 ${
+              isTrialExpired
+                ? 'bg-gray-400 dark:bg-gray-700 cursor-not-allowed opacity-60'
+                : 'bg-blue-600 cursor-pointer'
+            }`}
           >
             <Plus className="w-6 h-6 stroke-[3]" />
           </button>

@@ -1,3 +1,5 @@
+import { Timestamp } from 'firebase/firestore';
+
 export interface Toast {
   id: string;
   message: string;
@@ -90,6 +92,8 @@ export interface Organization {
   ownerUid: string;
   createdAt: string;
   inviteCode: string;
+  plan?: 'trial' | 'pro' | 'expired';
+  trialEndsAt?: Timestamp;
 }
 
 export interface AuditLog {
