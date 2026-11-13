@@ -15,14 +15,7 @@ import {
   BarChart3,
   FileText,
   Mail,
-  Loader2,
-  Briefcase,
-  TrendingUp,
-  Target,
-  PawPrint,
-  Building2,
-  Star,
-  HeartHandshake
+  Loader2
 } from 'lucide-react';
 import { Footer } from './Footer';
 import { LegalModal } from './LegalModal';
@@ -467,30 +460,113 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginSuccess, isDark, togg
         </section>
 
         <section id="social-proof" className="py-20 max-w-6xl mx-auto px-6 text-center border-b border-gray-100 dark:border-gray-800">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em] mb-10">Hanno scelto la chiarezza</p>
-          <div className="flex flex-wrap justify-center items-center gap-x-10 gap-y-6 md:gap-x-12">
-            {[
-              { name: 'Pratiko', href: 'https://pratiko.ch/', icon: Briefcase },
-              { name: 'RankUpList', href: 'https://rankuplist.com/', icon: TrendingUp },
-              { name: 'SwissLeadFinder', href: 'https://swissleadfinder.ch/it', icon: Target },
-              { name: 'KarePet', href: 'https://karepet.app/en/', icon: PawPrint },
-              { name: 'EdilFree', href: 'https://edilfree.vercel.app/', icon: Building2 },
-              { name: 'ReviewDesk', href: 'https://reviewdesk.ai.studio/', icon: Star },
-              { name: 'CuraFamily', href: 'https://curafamily.ch/it', icon: HeartHandshake },
-            ].map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group inline-flex items-center gap-2.5 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                <span className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-gray-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30 flex items-center justify-center transition-colors">
-                  <item.icon className="w-4 h-4" />
-                </span>
-                <span className="text-base font-bold font-display tracking-tight">{item.name}</span>
-              </a>
-            ))}
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em] mb-12">Hanno scelto la chiarezza</p>
+
+          <div
+            className="logo-carousel-wrapper relative overflow-hidden py-2 [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]"
+            role="region"
+            aria-label="Aziende e progetti che usano easy decision"
+          >
+            <div className="animate-logo-carousel items-center">
+              {[0, 1].map((copyIndex) => {
+                const partners = [
+                  {
+                    name: 'Pratiko',
+                    href: 'https://pratiko.ch/',
+                    logo: '/logos/pratiko.webp',
+                    fullBleed: false,
+                    padClass: 'p-1',
+                    wordmarkClass: 'text-[#083344] dark:text-white'
+                  },
+                  {
+                    name: 'RankUpList',
+                    href: 'https://rankuplist.com/',
+                    logo: '/logos/rankuplist.png',
+                    fullBleed: false,
+                    padClass: 'p-1',
+                    wordmarkClass: 'text-[#0F3C78] dark:text-sky-300'
+                  },
+                  {
+                    name: 'SwissLeadFinder',
+                    href: 'https://swissleadfinder.ch/it',
+                    logo: '/logos/swissleadfinder.png',
+                    fullBleed: false,
+                    padClass: 'p-2.5',
+                    wordmarkClass: 'text-[#0F172A] dark:text-white'
+                  },
+                  {
+                    name: 'KarePet',
+                    href: 'https://karepet.app/en/',
+                    logo: '/logos/karepet.png',
+                    fullBleed: true,
+                    padClass: '',
+                    wordmarkClass: 'text-[#4A6B53] dark:text-emerald-300'
+                  },
+                  {
+                    name: 'EdilFree',
+                    href: 'https://edilfree.vercel.app/',
+                    logo: '/logos/edilfree.svg',
+                    fullBleed: true,
+                    padClass: '',
+                    wordmarkClass: 'text-[#2563EB] dark:text-blue-400'
+                  },
+                  {
+                    name: 'ReviewDesk',
+                    href: 'https://reviewdesk.ai.studio/',
+                    logo: '/logos/reviewdesk.jpg',
+                    fullBleed: false,
+                    padClass: 'p-2',
+                    wordmarkClass: 'text-[#16365B] dark:text-slate-100'
+                  },
+                  {
+                    name: 'CuraFamily',
+                    href: 'https://curafamily.ch/it',
+                    logo: '/logos/curafamily.png',
+                    fullBleed: false,
+                    padClass: 'p-1',
+                    wordmarkClass: 'text-[#047857] dark:text-emerald-400'
+                  }
+                ];
+
+                return (
+                  <div
+                    key={copyIndex}
+                    aria-hidden={copyIndex === 1}
+                    className={`flex items-center shrink-0 gap-10 sm:gap-14 pr-10 sm:pr-14 ${copyIndex === 1 ? 'logo-carousel-duplicate' : ''}`}
+                  >
+                    {partners.map((item) => (
+                      <a
+                        key={`${copyIndex}-${item.href}`}
+                        href={item.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        tabIndex={copyIndex === 1 ? -1 : undefined}
+                        className="group inline-flex items-center gap-3.5 shrink-0 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-2xl"
+                      >
+                        <span
+                          className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden shrink-0 flex items-center justify-center transition-transform duration-200 group-hover:scale-105 shadow-sm ${
+                            item.fullBleed
+                              ? ''
+                              : `bg-white border border-slate-200/80 dark:border-slate-700/60 ${item.padClass}`
+                          }`}
+                        >
+                          <img
+                            src={item.logo}
+                            alt={copyIndex === 0 ? `${item.name} logo` : ''}
+                            referrerPolicy="no-referrer"
+                            loading="lazy"
+                            className={`w-full h-full ${item.fullBleed ? 'object-cover' : 'object-contain'}`}
+                          />
+                        </span>
+                        <span className={`text-lg sm:text-xl font-bold font-display tracking-tight whitespace-nowrap transition-opacity group-hover:opacity-80 ${item.wordmarkClass}`}>
+                          {item.name}
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </section>
 
