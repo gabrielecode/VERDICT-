@@ -32,14 +32,11 @@ import {
   onSnapshot, 
   query, 
   where,
-  orderBy,
   arrayUnion,
-  runTransaction,
-  Timestamp,
-  writeBatch
+  Timestamp
 } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { Decision, TeamMember, Organization, Toast, ToastType, DecisionOption, Vote as VoteData } from './types';
+import { Decision, TeamMember, Organization, Toast, ToastType, DecisionOption } from './types';
 import { DecisionCard } from './components/DecisionCard';
 import { ToastContainer } from './components/ToastContainer';
 import { HomePage } from './components/HomePage';
@@ -158,54 +155,35 @@ export default function App() {
     const handlePublicVote = async () => {
       if (!auth.currentUser) return;
       try {
-        const dRef = doc(db, 'decisions', publicDecisionId);
-        const voteRef = doc(db, 'decisions', publicDecisionId, 'votes', auth.currentUser.uid);
-
-        await runTransaction(db, async (transaction) => {
-          const vSnap = await transaction.get(voteRef);
-          if (vSnap.exists()) {
-            throw new Error('ALREADY_VOTED');
-          }
-
-          const dSnap = await transaction.get(dRef);
-          if (!dSnap.exists()) {
-            throw new Error('Decisione non trovata');
-          }
-
-          const data = dSnap.data();
-          const currentOptions: DecisionOption[] = data.options || [];
-
-          const newVote: any = {
-            userId: auth.currentUser!.uid,
+        const response = await fetch('/api/vote', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${await auth.currentUser.getIdToken()}`
+          },
+          body: JSON.stringify({
+            decisionId: publicDecisionId,
             optionIds: publicSelectedOptions,
-            ...(publicPendingRating !== undefined && publicPendingRating !== null ? { ratingValue: publicPendingRating } : {}),
-            ...(publicVoterName.trim() ? { voterName: publicVoterName.trim() } : {}),
-            timestamp: new Date().toISOString()
-          };
-
-          const updatedOptions = currentOptions.map(opt => {
-            if (publicSelectedOptions.includes(opt.id.toString())) {
-              return { ...opt, votes: (opt.votes || 0) + 1 };
-            }
-            return opt;
-          });
-
-          transaction.set(voteRef, newVote);
-          transaction.update(dRef, {
-            options: updatedOptions
-          });
+            ratingValue: publicPendingRating,
+            voterName: publicVoterName
+          })
         });
-
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          if (errData.error === 'ALREADY_VOTED') {
+            setPublicVoted(true);
+            addToast('Hai già votato questa proposta.', 'warning');
+          } else if (errData.error === 'CLOSED') {
+            addToast('Votazione chiusa.', 'error');
+          } else {
+            addToast('Errore generico', 'error');
+          }
+          return;
+        }
         setPublicVoted(true);
         addToast('Voto registrato!', 'success');
       } catch (e: any) {
-        if (e?.message === 'ALREADY_VOTED') {
-          setPublicVoted(true);
-          addToast('Hai già votato questa proposta.', 'warning');
-          return;
-        }
-        const msg = handleFirestoreError(e, OperationType.UPDATE, `decisions/${publicDecisionId}`);
-        addToast(msg, 'error');
+        addToast('Errore generico', 'error');
       }
     };
 
@@ -427,6 +405,13 @@ export default function App() {
       if (snap.exists()) {
         setOrg({ id: snap.id, ...snap.data() } as Organization);
       }
+    }, async () => {
+      if (user?.uid) {
+        try {
+          await setDoc(doc(db, 'users', user.uid), { orgId: null });
+        } catch {}
+      }
+      addToast("Non fai più parte dell'organizzazione.", 'info');
     });
 
     const mQuery = collection(db, 'orgs', userOrgId, 'members');
@@ -435,9 +420,21 @@ export default function App() {
       setMembers(data);
     });
 
-    const dQuery = query(collection(db, 'decisions'), where('orgId', '==', userOrgId), orderBy('createdAt', 'desc'));
-    const unsubDecisions = onSnapshot(dQuery, (snapshot) => {
-      const data = snapshot.docs.map(d => {
+    const q1 = query(collection(db, 'decisions'), where('orgId', '==', userOrgId), where('audience', '==', 'org'));
+    const q2 = query(collection(db, 'decisions'), where('orgId', '==', userOrgId), where('audience', '==', 'link'));
+    const q3 = query(collection(db, 'decisions'), where('orgId', '==', userOrgId), where('audience', '==', 'private'), where('creator.uid', '==', user?.uid));
+
+    let docsMap1 = new Map<string, any>();
+    let docsMap2 = new Map<string, any>();
+    let docsMap3 = new Map<string, any>();
+
+    const combineAndSet = () => {
+      const mergedMap = new Map<string, any>();
+      docsMap1.forEach((val, key) => mergedMap.set(key, val));
+      docsMap2.forEach((val, key) => mergedMap.set(key, val));
+      docsMap3.forEach((val, key) => mergedMap.set(key, val));
+
+      const data = Array.from(mergedMap.values()).map(d => {
         const item = d.data();
         const userVote = item.votes?.find((v: any) => v.userId === user?.uid);
         return {
@@ -448,18 +445,51 @@ export default function App() {
           comments: item.comments || []
         } as Decision;
       });
+
+      data.sort((a, b) => {
+        const getTime = (val: any) => {
+          if (!val) return 0;
+          if (typeof val.toMillis === 'function') return val.toMillis();
+          if (val instanceof Date) return val.getTime();
+          return new Date(val).getTime() || 0;
+        };
+        return getTime(b.createdAt) - getTime(a.createdAt);
+      });
+
       setDecisions(data);
       setLoadingDecisions(false);
-    }, (error) => {
+    };
+
+    const handleError = (error: any) => {
       const msg = handleFirestoreError(error, OperationType.LIST, 'decisions');
       addToast(msg, 'error');
       setLoadingDecisions(false);
-    });
+    };
+
+    const unsub1 = onSnapshot(q1, (snapshot) => {
+      docsMap1.clear();
+      snapshot.docs.forEach(d => docsMap1.set(d.id, d));
+      combineAndSet();
+    }, handleError);
+
+    const unsub2 = onSnapshot(q2, (snapshot) => {
+      docsMap2.clear();
+      snapshot.docs.forEach(d => docsMap2.set(d.id, d));
+      combineAndSet();
+    }, handleError);
+
+    const unsub3 = onSnapshot(q3, (snapshot) => {
+      docsMap3.clear();
+      snapshot.docs.forEach(d => docsMap3.set(d.id, d));
+      combineAndSet();
+    }, handleError);
 
     return () => {
       unsubOrg();
       unsubMembers();
-      unsubDecisions();
+      unsub1();
+      unsub2();
+      unsub3();
     };
   }, [userOrgId, user]);
 
@@ -548,7 +578,6 @@ export default function App() {
     if (!userOrgId) return;
     try {
       await deleteDoc(doc(db, 'orgs', userOrgId, 'members', memberUid));
-      await deleteDoc(doc(db, 'users', memberUid));
       addToast('Membro rimosso.', 'success');
     } catch (err) {
       const msg = handleFirestoreError(err, OperationType.DELETE, 'members');
@@ -673,53 +702,35 @@ export default function App() {
   };
 
   const handleVote = async (decisionId: string, optionIds: string[], ratingValue?: number) => {
-    if (!user) return;
+    if (!auth.currentUser) return;
     try {
-      const dRef = doc(db, 'decisions', decisionId);
-      const voteRef = doc(db, 'decisions', decisionId, 'votes', user.uid);
-
-      await runTransaction(db, async (transaction) => {
-        const vSnap = await transaction.get(voteRef);
-        if (vSnap.exists()) {
-          throw new Error('ALREADY_VOTED');
-        }
-
-        const dSnap = await transaction.get(dRef);
-        if (!dSnap.exists()) {
-          throw new Error('Decisione non trovata');
-        }
-
-        const data = dSnap.data();
-        const currentOptions: DecisionOption[] = data.options || [];
-
-        const newVote: VoteData = {
-          userId: user.uid,
+      const response = await fetch('/api/vote', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${await auth.currentUser.getIdToken()}`
+        },
+        body: JSON.stringify({
+          decisionId,
           optionIds,
-          ...(ratingValue !== undefined ? { ratingValue } : {}),
-          timestamp: new Date().toISOString()
-        };
-
-        const updatedOptions = currentOptions.map(opt => {
-          if (optionIds.includes(opt.id.toString())) {
-            return { ...opt, votes: (opt.votes || 0) + 1 };
-          }
-          return opt;
-        });
-
-        transaction.set(voteRef, newVote);
-        transaction.update(dRef, {
-          options: updatedOptions
-        });
+          ratingValue,
+          voterName: undefined
+        })
       });
-
-      addToast('Voto registrato!', 'success');
-    } catch (e: any) {
-      if (e?.message === 'ALREADY_VOTED') {
-        addToast('Hai già votato questa proposta.', 'warning');
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        if (errData.error === 'ALREADY_VOTED') {
+          addToast('Hai già votato questa proposta.', 'warning');
+        } else if (errData.error === 'CLOSED') {
+          addToast('Votazione chiusa.', 'error');
+        } else {
+          addToast('Errore generico', 'error');
+        }
         return;
       }
-      const msg = handleFirestoreError(e, OperationType.UPDATE, `decisions/${decisionId}`);
-      addToast(msg, 'error');
+      addToast('Voto registrato!', 'success');
+    } catch (e: any) {
+      addToast('Errore generico', 'error');
     }
   };
 
@@ -759,8 +770,11 @@ export default function App() {
     const decision = decisions.find(d => d.id === id);
     if (!decision) return;
     try {
-      const newDeadline = new Date(Math.max(Date.now(), new Date(decision.deadline).getTime()) + hours * 3600000).toISOString();
-      await updateDoc(doc(db, 'decisions', id), { deadline: newDeadline });
+      const newDate = new Date(Math.max(Date.now(), new Date(decision.deadline).getTime()) + hours * 3600000);
+      await updateDoc(doc(db, 'decisions', id), {
+        deadline: newDate.toISOString(),
+        deadlineTs: Timestamp.fromDate(newDate)
+      });
     } catch (e) {
       const msg = handleFirestoreError(e, OperationType.UPDATE, `decisions/${id}`);
       addToast(msg, 'error');
@@ -769,8 +783,11 @@ export default function App() {
 
   const handleExpireDecisionImmediately = async (id: string) => {
     try {
-      const pastDeadline = new Date(Date.now() - 1000).toISOString();
-      await updateDoc(doc(db, 'decisions', id), { deadline: pastDeadline });
+      const pastDate = new Date(Date.now() - 1000);
+      await updateDoc(doc(db, 'decisions', id), {
+        deadline: pastDate.toISOString(),
+        deadlineTs: Timestamp.fromDate(pastDate)
+      });
     } catch (e) {
       const msg = handleFirestoreError(e, OperationType.UPDATE, `decisions/${id}`);
       addToast(msg, 'error');
