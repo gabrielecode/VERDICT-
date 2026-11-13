@@ -8,10 +8,12 @@ import {
   Send,
   Users,
   Star,
-  FileText
+  FileText,
+  FileDown
 } from 'lucide-react';
 import { Decision } from '../types';
 import { getTimeRemaining, getCategoryStyles, formatDate, TimeRemaining } from '../utils';
+import { generateDecisionSummaryPDF } from '../utils/pdfGenerator';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -43,6 +45,7 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
   const [finalResp, setFinalResp] = useState(decision.finalDecision?.responsible || '');
   const [finalDate, setFinalDate] = useState(decision.finalDecision?.date || new Date().toISOString().split('T')[0]);
   const [isEditingFinal, setIsEditingFinal] = useState(false);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -121,21 +124,14 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
   };
 
   const handleExportPDF = async () => {
-    const { jsPDF } = await import('jspdf');
-    const autoTableModule = await import('jspdf-autotable');
-    const autoTable = (autoTableModule as any).default || autoTableModule;
-
-    const doc = new jsPDF();
-    doc.text(`Risultati: ${decision.title}`, 10, 10);
-    
-    const tableData = decision.options.map(opt => [opt.text, opt.votes]);
-    autoTable(doc, {
-      head: [['Opzione', 'Voti']],
-      body: tableData,
-      startY: 20,
-    });
-    
-    doc.save(`risultati_${decision.title.replace(/\s+/g, '_')}.pdf`);
+    try {
+      setIsExportingPDF(true);
+      await generateDecisionSummaryPDF(decision);
+    } catch (error) {
+      console.error('Errore durante la generazione del PDF:', error);
+    } finally {
+      setIsExportingPDF(false);
+    }
   };
 
   const handleVoteSubmit = (optionId: string) => {
@@ -226,9 +222,22 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
             </AnimatePresence>
           </button>
           
-          <div className="flex items-center gap-3 ml-4 border-l border-slate-200 dark:border-slate-800 pl-4">
-            <button onClick={handleExportCSV} className="text-[13px] font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition cursor-pointer">Esporta CSV</button>
-            <button onClick={handleExportPDF} className="text-[13px] font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition cursor-pointer">PDF</button>
+          <div className="flex items-center gap-2 ml-4 border-l border-slate-200 dark:border-slate-800 pl-4">
+            <button
+              onClick={handleExportCSV}
+              className="px-2.5 py-1.5 text-[13px] font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
+            >
+              CSV
+            </button>
+            <button
+              onClick={handleExportPDF}
+              disabled={isExportingPDF}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer disabled:opacity-50"
+              title="Scarica Report Riassuntivo PDF"
+            >
+              <FileDown className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span>{isExportingPDF ? 'Generazione...' : 'Scarica PDF'}</span>
+            </button>
           </div>
         </div>
       </div>
@@ -291,11 +300,24 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
 
           {isExpired && (
             <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 border border-blue-200 dark:border-blue-900/50 shadow-xs space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-bold text-gray-900 dark:text-white">Decisione Presa (Verdetto)</h2>
-                {decision.finalDecision && !isEditingFinal && auth.currentUser?.uid === decision.creator?.uid && (
-                  <button onClick={() => setIsEditingFinal(true)} className="text-xs font-bold text-blue-600 hover:underline">Modifica</button>
-                )}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-bold text-gray-900 dark:text-white">Decisione Presa (Verdetto)</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Votazione conclusa · Risultati finali consolidati</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleExportPDF}
+                    disabled={isExportingPDF}
+                    className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition shadow-xs cursor-pointer disabled:opacity-60"
+                  >
+                    <FileDown className="w-3.5 h-3.5" />
+                    <span>{isExportingPDF ? 'Generazione PDF...' : 'Scarica Report PDF'}</span>
+                  </button>
+                  {decision.finalDecision && !isEditingFinal && auth.currentUser?.uid === decision.creator?.uid && (
+                    <button onClick={() => setIsEditingFinal(true)} className="px-3 py-1.5 text-xs font-bold text-blue-600 hover:underline cursor-pointer">Modifica</button>
+                  )}
+                </div>
               </div>
 
               {decision.finalDecision && !isEditingFinal ? (
@@ -492,7 +514,19 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
               <Clock className="w-4 h-4 text-blue-600" /> Tempo di Votazione
             </div>
             {isExpired ? (
-              <div className="py-4 bg-gray-50 dark:bg-gray-800 rounded-2xl"><span className="text-sm font-bold text-red-600 uppercase">Conclusa</span></div>
+              <div className="space-y-3">
+                <div className="py-3 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/30 rounded-2xl">
+                  <span className="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-wider">Votazione Conclusa</span>
+                </div>
+                <button
+                  onClick={handleExportPDF}
+                  disabled={isExportingPDF}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-3 text-xs font-semibold rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-900/50 transition cursor-pointer disabled:opacity-50"
+                >
+                  <FileDown className="w-3.5 h-3.5" />
+                  <span>{isExportingPDF ? 'Generazione...' : 'Scarica Report PDF'}</span>
+                </button>
+              </div>
             ) : (
               <div className="grid grid-cols-4 gap-2 pt-2">
                 {Object.entries(timerBreakdown || {}).map(([key, val]) => (
