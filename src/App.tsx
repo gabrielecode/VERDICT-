@@ -57,6 +57,7 @@ import {
   handleFirestoreError, 
   OperationType 
 } from './lib/firebase';
+import { submitVote, VoteError } from './lib/voting';
 import { AuthDomainModal } from './components/AuthDomainModal';
 
 const CreationModal = lazy(() => import('./components/CreationModal').then(m => ({ default: m.CreationModal })));
@@ -70,12 +71,16 @@ export default function App() {
 
   const [publicDecision, setPublicDecision] = useState<Decision | null>(null);
   const [publicLoading, setPublicLoading] = useState(true);
+  const [publicAuthError, setPublicAuthError] = useState(false);
+  const [publicAccessDenied, setPublicAccessDenied] = useState(false);
   const [publicVoted, setPublicVoted] = useState(false);
+  const [publicUserOptions, setPublicUserOptions] = useState<string[]>([]);
   const [publicSelectedOptions, setPublicSelectedOptions] = useState<string[]>([]);
   const [publicPendingRating, setPublicPendingRating] = useState<number | null>(null);
   const [publicHoverRating, setPublicHoverRating] = useState<number | null>(null);
   const [publicUserRating, setPublicUserRating] = useState<number | undefined>(undefined);
   const [publicVoterName, setPublicVoterName] = useState('');
+  const [publicSubmittingVote, setPublicSubmittingVote] = useState(false);
 
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -112,46 +117,103 @@ export default function App() {
   useEffect(() => {
     if (!publicDecisionId) return;
     let unsubSnapshot: (() => void) | undefined;
+    let unsubVoteSnapshot: (() => void) | undefined;
+
     const unsubAuth = onAuthStateChanged(auth, (u) => {
       if (!u) {
-        signInAnon().catch(() => {});
+        signInAnon().catch(() => {
+          setPublicAuthError(true);
+          setPublicLoading(false);
+        });
         return;
       }
-      if (unsubSnapshot) unsubSnapshot();
-      unsubSnapshot = onSnapshot(doc(db, 'decisions', publicDecisionId), (snap) => {
-        if (snap.exists()) {
-          const item = snap.data();
-          setPublicDecision({ ...item, id: snap.id } as Decision);
-        }
-        setPublicLoading(false);
-      }, () => {
-        setPublicLoading(false);
-      });
 
-      getDoc(doc(db, 'decisions', publicDecisionId, 'votes', u.uid)).then(snap => {
-        if (snap.exists()) {
-          const data = snap.data();
-          setPublicVoted(true);
-          if (typeof data.ratingValue === 'number') {
-            setPublicUserRating(data.ratingValue);
+      setPublicAuthError(false);
+      setPublicAccessDenied(false);
+
+      if (unsubSnapshot) unsubSnapshot();
+      unsubSnapshot = onSnapshot(
+        doc(db, 'decisions', publicDecisionId),
+        (snap) => {
+          if (snap.exists()) {
+            const item = snap.data();
+            setPublicDecision({ ...item, id: snap.id } as Decision);
+          } else {
+            setPublicDecision(null);
           }
+          setPublicLoading(false);
+        },
+        (error: any) => {
+          if (error?.code === 'permission-denied') {
+            setPublicAccessDenied(true);
+          }
+          setPublicLoading(false);
         }
-      }).catch(() => {});
+      );
+
+      if (unsubVoteSnapshot) unsubVoteSnapshot();
+      unsubVoteSnapshot = onSnapshot(
+        doc(db, 'decisions', publicDecisionId, 'votes', u.uid),
+        (snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            setPublicVoted(true);
+            setPublicUserOptions(Array.isArray(data.optionIds) ? data.optionIds.map(String) : []);
+            if (typeof data.ratingValue === 'number') {
+              setPublicUserRating(data.ratingValue);
+            }
+          } else {
+            setPublicVoted(false);
+            setPublicUserOptions([]);
+            setPublicUserRating(undefined);
+          }
+        },
+        () => {}
+      );
     });
 
     return () => {
       unsubAuth();
       if (unsubSnapshot) unsubSnapshot();
+      if (unsubVoteSnapshot) unsubVoteSnapshot();
     };
   }, [publicDecisionId]);
-
-
 
   if (publicDecisionId) {
     if (publicLoading) {
       return (
         <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-gray-950 text-white dark' : 'bg-gray-50 text-gray-900'}`}>
           <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+        </div>
+      );
+    }
+
+    if (publicAuthError || publicAccessDenied) {
+      return (
+        <div className={`min-h-screen flex flex-col items-center justify-center p-4 ${isDark ? 'bg-gray-950 text-white dark' : 'bg-gray-50 text-gray-900'}`}>
+          <ToastContainer toasts={toasts} removeToast={removeToast} />
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-8 max-w-md w-full text-center space-y-4">
+            <h1 className="text-xl font-bold">Accesso richiesto per votare</h1>
+            <p className="text-xs text-slate-400">
+              {publicAccessDenied
+                ? 'Questa votazione è riservata ai membri autorizzati. Accedi con il tuo account Google per continuare.'
+                : 'Accedi con Google per visualizzare questa proposta ed esprimere il tuo voto.'}
+            </p>
+            <div className="flex flex-col gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  signInWithGoogle().catch((err) => {
+                    addToast(parseAuthError(err).message, 'error');
+                  });
+                }}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-6 py-3 rounded-xl cursor-pointer transition"
+              >
+                Accedi con Google
+              </button>
+              <a href="/" className="inline-block text-xs font-semibold text-slate-500 hover:underline pt-1">Torna alla Home</a>
+            </div>
+          </div>
         </div>
       );
     }
@@ -168,7 +230,7 @@ export default function App() {
       );
     }
 
-    const totalVotes = publicDecision.options.reduce((sum, opt) => sum + opt.votes, 0);
+    const totalVotes = publicDecision.options.reduce((sum, opt) => sum + (Number(opt.votes) || 0), 0);
     const isExpired = getTimeRemaining(publicDecision.deadline).status === 'expired';
     const resultsVis = publicDecision.resultsVisibility || 'always';
     const canShowResults =
@@ -177,9 +239,12 @@ export default function App() {
       (resultsVis === 'closed' && isExpired);
 
     const handlePublicVote = async () => {
-      if (!auth.currentUser) return;
+      if (publicSubmittingVote || publicVoted || isExpired) return;
       const isRating = publicDecision.type === 'rating';
       if (isRating && (publicPendingRating === null || !Number.isInteger(publicPendingRating))) {
+        return;
+      }
+      if (!isRating && publicSelectedOptions.length === 0) {
         return;
       }
       const numericRating = isRating ? Number(publicPendingRating) : undefined;
@@ -188,39 +253,44 @@ export default function App() {
           ? [String(publicDecision.options[numericRating - 1]?.id ?? numericRating - 1)]
           : publicSelectedOptions;
 
+      setPublicSubmittingVote(true);
       try {
-        const response = await fetch('/api/vote', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${await auth.currentUser.getIdToken()}`
-          },
-          body: JSON.stringify({
-            decisionId: publicDecisionId,
-            optionIds: optionIdsToSend,
-            ratingValue: numericRating,
-            voterName: publicDecision.isAnonymous ? undefined : publicVoterName
-          })
-        });
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          if (errData.error === 'ALREADY_VOTED') {
-            setPublicVoted(true);
-            addToast('Hai già votato questa proposta.', 'warning');
-          } else if (errData.error === 'CLOSED') {
-            addToast('Votazione chiusa.', 'error');
-          } else {
-            addToast('Errore generico', 'error');
+        if (!auth.currentUser) {
+          try {
+            await signInAnon();
+          } catch {
+            addToast('Accedi con Google per inviare il voto.', 'error');
+            setPublicAuthError(true);
+            return;
           }
-          return;
         }
+
+        await submitVote({
+          decisionId: publicDecisionId,
+          optionIds: optionIdsToSend,
+          ratingValue: numericRating,
+          voterName: publicDecision.isAnonymous ? undefined : publicVoterName,
+        });
+
         setPublicVoted(true);
+        setPublicUserOptions(optionIdsToSend.map(String));
         if (numericRating !== undefined) {
           setPublicUserRating(numericRating);
         }
         addToast('Voto registrato!', 'success');
       } catch (e: any) {
-        addToast('Errore generico', 'error');
+        if (e instanceof VoteError) {
+          if (e.code === 'ALREADY_VOTED') {
+            setPublicVoted(true);
+            addToast('Hai già votato questa proposta.', 'warning');
+          } else {
+            addToast(e.message, 'error');
+          }
+        } else {
+          addToast('Errore durante l\'invio del voto. Riprova.', 'error');
+        }
+      } finally {
+        setPublicSubmittingVote(false);
       }
     };
 
@@ -324,7 +394,7 @@ export default function App() {
                     <div className="space-y-6">
                       {canShowResults ? (() => {
                         const avgRating = totalVotes > 0
-                          ? (publicDecision.options.reduce((sum, opt, idx) => sum + opt.votes * (idx + 1), 0) / totalVotes).toFixed(1)
+                      ? (publicDecision.options.reduce((sum, opt, idx) => sum + (Number(opt.votes) || 0) * (idx + 1), 0) / totalVotes).toFixed(1)
                           : '–';
                         return (
                           <div className="flex items-center gap-5 p-5 bg-gradient-to-r from-amber-500/5 to-orange-500/5 rounded-2xl border border-amber-500/10">
@@ -366,25 +436,27 @@ export default function App() {
               ) : (
                 <div className="grid grid-cols-1 gap-4">
                   {publicDecision.options.map((opt, index) => {
-                    const percentage = totalVotes > 0 ? (opt.votes / totalVotes) * 100 : 0;
+                    const optVotes = Number(opt.votes) || 0;
+                    const percentage = totalVotes > 0 ? (optVotes / totalVotes) * 100 : 0;
                     const isSelected = publicSelectedOptions.includes(opt.id.toString());
+                    const userVotedForThis = publicUserOptions.includes(opt.id.toString());
                     const optionLetter = String.fromCharCode(65 + index);
 
                     return (
                       <div key={opt.id} className="relative">
                         {publicVoted || isExpired ? (
-                          <div className="border border-gray-200 dark:border-gray-800 rounded-2xl p-5 relative bg-white dark:bg-gray-950">
+                          <div className={`border rounded-2xl p-5 relative bg-white dark:bg-gray-950 ${userVotedForThis ? 'border-blue-500 bg-blue-50/10 dark:bg-blue-900/10' : 'border-gray-200 dark:border-gray-800'}`}>
                             {canShowResults && (
                               <motion.div initial={{ width: 0 }} animate={{ width: `${percentage}%` }} className="absolute top-0 bottom-0 left-0 bg-blue-600 opacity-[0.04] -z-10" />
                             )}
                             <div className="flex items-center justify-between relative z-10">
                               <div className="flex items-center gap-4 flex-1 min-w-0">
-                                <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 flex items-center justify-center font-bold text-sm shrink-0">{optionLetter}</div>
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${userVotedForThis ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>{optionLetter}</div>
                                 <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">{opt.text}</span>
                               </div>
                               <div className="text-right shrink-0">
                                 {canShowResults ? (
-                                  <span className="text-base font-black text-blue-600">{percentage.toFixed(0)}%</span>
+                                  <span className={`text-base font-black ${userVotedForThis ? 'text-blue-600' : 'text-gray-800 dark:text-gray-200'}`}>{percentage.toFixed(0)}%</span>
                                 ) : (
                                   <span className="text-xs text-slate-400 font-medium">Risultati nascosti</span>
                                 )}
@@ -407,7 +479,7 @@ export default function App() {
                                 setPublicSelectedOptions(exists ? publicSelectedOptions.filter(id => id !== opt.id.toString()) : [...publicSelectedOptions, opt.id.toString()]);
                               }
                             }}
-                            className={`w-full text-left border-2 rounded-2xl p-5 transition flex items-center gap-4 ${isSelected ? 'border-blue-600 bg-blue-50/20 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900'}`}
+                            className={`w-full text-left border-2 rounded-2xl p-5 transition flex items-center gap-4 cursor-pointer ${isSelected ? 'border-blue-600 bg-blue-50/20 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900'}`}
                           >
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>{optionLetter}</div>
                             <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex-1">{opt.text}</span>
@@ -425,10 +497,13 @@ export default function App() {
               ) && (
                 <div className="flex justify-end pt-4">
                   <button
+                    type="button"
+                    disabled={publicSubmittingVote}
                     onClick={handlePublicVote}
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-6 py-3 rounded-xl shadow-md cursor-pointer"
+                    className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-bold px-6 py-3 rounded-xl shadow-md cursor-pointer flex items-center gap-2"
                   >
-                    Invia Voto
+                    {publicSubmittingVote && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    <span>{publicSubmittingVote ? 'Invio in corso...' : 'Invia Voto'}</span>
                   </button>
                 </div>
               )}
@@ -883,37 +958,28 @@ export default function App() {
   };
 
   const handleVote = async (decisionId: string, optionIds: string[], ratingValue?: number): Promise<boolean> => {
-    if (!auth.currentUser) return false;
+    if (!auth.currentUser) {
+      addToast('Devi accedere per votare.', 'error');
+      return false;
+    }
     try {
-      const response = await fetch('/api/vote', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${await auth.currentUser.getIdToken()}`
-        },
-        body: JSON.stringify({
-          decisionId,
-          optionIds,
-          ratingValue,
-          voterName: undefined
-        })
+      await submitVote({
+        decisionId,
+        optionIds,
+        ratingValue,
       });
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        if (errData.error === 'ALREADY_VOTED') {
-          addToast('Hai già votato questa proposta.', 'warning');
-          return true;
-        } else if (errData.error === 'CLOSED') {
-          addToast('Votazione chiusa.', 'error');
-        } else {
-          addToast('Errore generico', 'error');
-        }
-        return false;
-      }
       addToast('Voto registrato!', 'success');
       return true;
     } catch (e: any) {
-      addToast('Errore generico', 'error');
+      if (e instanceof VoteError) {
+        if (e.code === 'ALREADY_VOTED') {
+          addToast('Hai già votato questa proposta.', 'warning');
+          return true;
+        }
+        addToast(e.message, 'error');
+      } else {
+        addToast('Errore durante l\'invio del voto. Riprova.', 'error');
+      }
       return false;
     }
   };

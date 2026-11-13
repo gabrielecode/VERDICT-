@@ -24,6 +24,9 @@ export interface Creator {
 export interface Participant {
   name: string;
   avatar: string;
+  optionIds?: string[];
+  ratingValue?: number;
+  timestamp?: string;
 }
 
 export interface Comment {

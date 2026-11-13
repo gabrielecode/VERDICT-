@@ -140,8 +140,18 @@ service cloud.firestore {
       allow update: if isSignedIn() && isValidId(decisionId) && (
         (
           existing().audience == 'link' &&
-          incoming().diff(existing()).affectedKeys().hasOnly(['options']) &&
-          getAfter(/databases/$(database)/documents/decisions/$(decisionId)/votes/$(request.auth.uid)) != null
+          incoming().options is list &&
+          incoming().options.size() == existing().options.size() &&
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly(['options']) ||
+            (
+              (!('isAnonymous' in existing()) || existing().isAnonymous == false) &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['options', 'participants']) &&
+              incoming().participants is list &&
+              incoming().participants.size() <= 200
+            )
+          ) &&
+          existsAfter(/databases/$(database)/documents/decisions/$(decisionId)/votes/$(request.auth.uid))
         ) ||
         (
           exists(/databases/$(database)/documents/orgs/$(existing().orgId)/members/$(request.auth.uid)) && (
@@ -149,11 +159,23 @@ service cloud.firestore {
             isOrgOwner(existing().orgId) ||
             (
               incoming().diff(existing()).affectedKeys().hasOnly(['comments']) &&
+              incoming().comments is list &&
+              incoming().comments.size() > 0 &&
               incoming().comments[incoming().comments.size() - 1].uid == request.auth.uid
             ) ||
             (
-              incoming().diff(existing()).affectedKeys().hasOnly(['options']) &&
-              getAfter(/databases/$(database)/documents/decisions/$(decisionId)/votes/$(request.auth.uid)) != null
+              incoming().options is list &&
+              incoming().options.size() == existing().options.size() &&
+              (
+                incoming().diff(existing()).affectedKeys().hasOnly(['options']) ||
+                (
+                  (!('isAnonymous' in existing()) || existing().isAnonymous == false) &&
+                  incoming().diff(existing()).affectedKeys().hasOnly(['options', 'participants']) &&
+                  incoming().participants is list &&
+                  incoming().participants.size() <= 200
+                )
+              ) &&
+              existsAfter(/databases/$(database)/documents/decisions/$(decisionId)/votes/$(request.auth.uid))
             )
           )
         )
@@ -172,10 +194,26 @@ service cloud.firestore {
           isValidId(decisionId) && isValidId(voteId) &&
           voteId == request.auth.uid &&
           resource == null &&
-          request.time < get(/databases/$(database)/documents/decisions/$(decisionId)).data.deadlineTs &&
-          incoming().userId == request.auth.uid && (
+          incoming().keys().hasAll(['userId', 'optionIds', 'timestamp']) &&
+          incoming().keys().hasOnly(['userId', 'optionIds', 'ratingValue', 'voterName', 'timestamp']) &&
+          incoming().userId == request.auth.uid &&
+          incoming().optionIds is list &&
+          incoming().optionIds.size() >= 1 &&
+          incoming().optionIds.size() <= 50 &&
+          incoming().timestamp is string &&
+          incoming().timestamp.size() <= 64 &&
+          (!('ratingValue' in incoming()) || (incoming().ratingValue is int && incoming().ratingValue >= 1 && incoming().ratingValue <= 5)) &&
+          (!('voterName' in incoming()) || (incoming().voterName is string && incoming().voterName.size() <= 60)) &&
+          (!('deadlineTs' in get(/databases/$(database)/documents/decisions/$(decisionId)).data) || request.time < get(/databases/$(database)/documents/decisions/$(decisionId)).data.deadlineTs) &&
+          (
             get(/databases/$(database)/documents/decisions/$(decisionId)).data.audience == 'link' ||
-            exists(/databases/$(database)/documents/orgs/$(get(/databases/$(database)/documents/decisions/$(decisionId)).data.orgId)/members/$(request.auth.uid))
+            (
+              exists(/databases/$(database)/documents/orgs/$(get(/databases/$(database)/documents/decisions/$(decisionId)).data.orgId)/members/$(request.auth.uid)) &&
+              (
+                get(/databases/$(database)/documents/decisions/$(decisionId)).data.audience != 'private' ||
+                get(/databases/$(database)/documents/decisions/$(decisionId)).data.creator.uid == request.auth.uid
+              )
+            )
           );
         allow update, delete: if false;
       }

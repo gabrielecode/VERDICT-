@@ -21,7 +21,7 @@ export const DecisionCard: React.FC<DecisionCardProps> = ({ decision, onClick })
     return () => clearInterval(timer);
   }, [decision.deadline]);
 
-  const totalVotes = decision.options.reduce((sum, opt) => sum + opt.votes, 0);
+  const totalVotes = decision.options.reduce((sum, opt) => sum + (Number(opt.votes) || 0), 0);
   const catStyles = getCategoryStyles(decision.category);
 
   let badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/30';
@@ -127,13 +127,23 @@ export const DecisionCard: React.FC<DecisionCardProps> = ({ decision, onClick })
               <div className="flex items-center">
                 <div className="flex -space-x-2 overflow-hidden">
                   {decision.participants.slice(0, 3).map((p, idx) => (
-                    <img
-                      key={idx}
-                      className="inline-block h-6.5 w-6.5 rounded-full ring-2 ring-white dark:ring-gray-900 object-cover"
-                      src={p.avatar}
-                      alt={p.name}
-                      referrerPolicy="no-referrer"
-                    />
+                    p.avatar ? (
+                      <img
+                        key={idx}
+                        className="inline-block h-6.5 w-6.5 rounded-full ring-2 ring-white dark:ring-gray-900 object-cover"
+                        src={p.avatar}
+                        alt={p.name}
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div
+                        key={idx}
+                        title={p.name}
+                        className="inline-flex items-center justify-center h-6.5 w-6.5 rounded-full ring-2 ring-white dark:ring-gray-900 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] font-bold uppercase"
+                      >
+                        {(p.name || 'P').charAt(0)}
+                      </div>
+                    )
                   ))}
                   {decision.participants.length > 3 && (
                     <div className="flex items-center justify-center h-6.5 w-6.5 rounded-full bg-slate-100 dark:bg-gray-800 ring-2 ring-white dark:ring-gray-900 text-[10px] font-bold text-slate-500 dark:text-gray-400">

@@ -13,7 +13,9 @@
   "dependencies": {
     "@netlify/functions": "^6.1.1",
     "@tailwindcss/vite": "^4.1.14",
+    "@types/express": "^5.0.6",
     "@vitejs/plugin-react": "^5.0.4",
+    "express": "^5.3.0",
     "firebase": "^13.2.0",
     "firebase-admin": "^14.5.1",
     "jspdf": "^4.2.1",
@@ -23,7 +25,8 @@
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "recharts": "^3.10.1",
-    "stripe": "^23.1.0"
+    "stripe": "^23.1.0",
+    "tsx": "^4.23.15"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

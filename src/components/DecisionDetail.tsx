@@ -82,7 +82,7 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
     return () => unsubscribe();
   }, [decision.id, auth.currentUser?.uid]);
 
-  const totalVotes = decision.options.reduce((sum, opt) => sum + opt.votes, 0);
+  const totalVotes = decision.options.reduce((sum, opt) => sum + (Number(opt.votes) || 0), 0);
   const isExpired = timeLeft.status === 'expired';
   const resultsVis = decision.resultsVisibility || 'always';
   const canShowResults = 
@@ -214,9 +214,9 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
   };
 
   const getRatingBreakdown = () => {
-    const totalRatings = decision.options.reduce((sum, opt) => sum + opt.votes, 0);
+    const totalRatings = decision.options.reduce((sum, opt) => sum + (Number(opt.votes) || 0), 0);
     if (totalRatings === 0) return { average: '–', total: 0 };
-    const average = decision.options.reduce((sum, opt, idx) => sum + (opt.votes * (idx + 1)), 0) / totalRatings;
+    const average = decision.options.reduce((sum, opt, idx) => sum + ((Number(opt.votes) || 0) * (idx + 1)), 0) / totalRatings;
     
     return {
       average: average.toFixed(1),
@@ -491,7 +491,8 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
               {decision.type !== 'rating' && (
                 <div className="grid grid-cols-1 gap-4">
                   {decision.options.map((opt, index) => {
-                    const percentage = totalVotes > 0 ? (opt.votes / totalVotes) * 100 : 0;
+                    const optVotes = Number(opt.votes) || 0;
+                    const percentage = totalVotes > 0 ? (optVotes / totalVotes) * 100 : 0;
                     const isOptionSelected = selectedOptions.includes(opt.id.toString());
                     const userVotedForThis = userVotedOptions.includes(opt.id.toString());
                     const optionLetter = String.fromCharCode(65 + index);
@@ -510,7 +511,10 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
                               </div>
                               <div className="text-right flex items-center gap-4 shrink-0">
                                 {canShowResults ? (
-                                  <span className={`text-base font-black ${userVotedForThis ? 'text-blue-600' : 'text-gray-800 dark:text-gray-200'}`}>{percentage.toFixed(0)}%</span>
+                                  <div className="flex items-baseline gap-2">
+                                    <span className="text-xs text-slate-400 font-medium">{optVotes} {optVotes === 1 ? 'voto' : 'voti'}</span>
+                                    <span className={`text-base font-black ${userVotedForThis ? 'text-blue-600' : 'text-gray-800 dark:text-gray-200'}`}>{percentage.toFixed(0)}%</span>
+                                  </div>
                                 ) : (
                                   <span className="text-xs text-slate-400 font-medium">Risultati nascosti</span>
                                 )}
@@ -523,7 +527,7 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
                             )}
                           </div>
                         ) : (
-                          <motion.button onClick={() => handleVoteSubmit(opt.id.toString())} whileTap={{ scale: 0.98 }} className={`w-full text-left border-2 rounded-2xl p-5 transition flex items-center gap-4 ${isOptionSelected ? 'border-blue-600 bg-blue-50/20 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900'}`}>
+                          <motion.button onClick={() => handleVoteSubmit(opt.id.toString())} whileTap={{ scale: 0.98 }} className={`w-full text-left border-2 rounded-2xl p-5 transition flex items-center gap-4 cursor-pointer ${isOptionSelected ? 'border-blue-600 bg-blue-50/20 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900'}`}>
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${isOptionSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>{optionLetter}</div>
                             <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex-1 leading-snug">{opt.text}</span>
                           </motion.button>
@@ -534,13 +538,58 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
                 </div>
               )}
 
+              {!decision.isAnonymous && canShowResults && decision.participants && decision.participants.length > 0 && (
+                <div className="pt-4 border-t border-gray-100 dark:border-gray-800 space-y-3">
+                  <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    Voti ricevuti ({decision.participants.length})
+                  </h3>
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                    {decision.participants.map((p, idx) => {
+                      const chosenLabels = Array.isArray(p.optionIds)
+                        ? p.optionIds
+                            .map((id) => decision.options.find((o) => String(o.id) === String(id))?.text)
+                            .filter(Boolean)
+                            .join(', ')
+                        : '';
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between gap-3 px-3.5 py-2.5 bg-gray-50 dark:bg-gray-800/60 rounded-xl text-xs"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {p.avatar ? (
+                              <img
+                                src={p.avatar}
+                                alt={p.name}
+                                referrerPolicy="no-referrer"
+                                className="w-6 h-6 rounded-full object-cover shrink-0"
+                              />
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold text-[10px] uppercase shrink-0">
+                                {(p.name || 'P').charAt(0)}
+                              </div>
+                            )}
+                            <span className="font-semibold text-gray-800 dark:text-gray-200 truncate">{p.name}</span>
+                          </div>
+                          <span className="text-gray-500 dark:text-gray-400 font-medium shrink-0">
+                            {typeof p.ratingValue === 'number'
+                              ? `${p.ratingValue}/5 ★`
+                              : chosenLabels || 'Votato'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <AnimatePresence>
                 {!hasVoted && !isExpired && (selectedOptions.length > 0 || pendingRating !== null) && (
                   <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }} className="sticky bottom-20 md:bottom-4 z-20 flex items-center justify-between gap-4 p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-xl">
                     <div className="flex-1"><p className="text-sm font-bold text-gray-900 dark:text-white">Conferma il tuo voto per procedere.</p></div>
                     <div className="flex items-center gap-2">
-                      <button onClick={handleCancelSelection} className="px-4 py-2 text-xs font-bold text-gray-600 dark:text-gray-400">Annulla</button>
-                      <button onClick={handleConfirmVote} className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-6 py-2 rounded-xl">Invia Voto</button>
+                      <button onClick={handleCancelSelection} className="px-4 py-2 text-xs font-bold text-gray-600 dark:text-gray-400 cursor-pointer">Annulla</button>
+                      <button onClick={handleConfirmVote} className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-6 py-2 rounded-xl cursor-pointer">Invia Voto</button>
                     </div>
                   </motion.div>
                 )}
