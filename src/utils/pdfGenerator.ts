@@ -265,7 +265,7 @@ export async function generateDecisionSummaryPDF(decision: Decision): Promise<vo
 
     let statusText = '-';
     if (isConcluded && votes > 0 && votes === maxVotes) {
-      statusText = winningOptions.length > 1 ? 'Parita vincente' : 'Opzione vincente';
+      statusText = winningOptions.length > 1 ? 'Parità vincente' : 'Opzione vincente';
     } else if (votes > 0) {
       statusText = 'Consenso parziale';
     } else {

@@ -5,6 +5,10 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
     function isSignedIn() {
       return request.auth != null;
     }
@@ -34,25 +38,85 @@ service cloud.firestore {
       return resource.data;
     }
 
+    function isValidMemberData(data, memberId) {
+      return data.keys().hasAll(['uid', 'role', 'name', 'email', 'joinedAt']) &&
+        data.keys().hasOnly(['uid', 'role', 'name', 'email', 'joinedAt', 'avatar', 'status', 'code']) &&
+        data.uid == memberId &&
+        data.role in ['owner', 'member'] &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 120 &&
+        data.email is string && data.email.size() <= 254 &&
+        data.joinedAt is string && data.joinedAt.size() <= 64 &&
+        (!data.keys().hasAny(['avatar']) || (data.avatar is string && data.avatar.size() <= 2048)) &&
+        (!data.keys().hasAny(['status']) || (data.status is string && data.status.size() <= 32)) &&
+        (!data.keys().hasAny(['code']) || (data.code is string && data.code.size() <= 32));
+    }
+
+    function isValidInviteCode(orgId, code) {
+      return code is string &&
+        code.size() > 0 &&
+        code.size() <= 32 &&
+        exists(/databases/$(database)/documents/inviteCodes/$(code)) &&
+        get(/databases/$(database)/documents/inviteCodes/$(code)).data.orgId == orgId &&
+        get(/databases/$(database)/documents/orgs/$(orgId)).data.inviteCode == code;
+    }
+
     match /users/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow read, write: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
     }
 
     match /inviteCodes/{code} {
-      allow read: if isSignedIn();
-      allow create: if isOrgOwner(incoming().orgId);
-      allow update, delete: if isOrgOwner(existing().orgId);
+      allow get: if isSignedIn() && !isAnonymous() && isValidId(code);
+      allow list: if false;
+      allow create: if isSignedIn() && !isAnonymous() && isValidId(code) && isOrgOwner(incoming().orgId);
+      allow update, delete: if isSignedIn() && !isAnonymous() && isValidId(code) && isOrgOwner(existing().orgId);
     }
 
     match /orgs/{orgId} {
-      allow read: if isOrgMember(orgId);
-      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
-      allow update, delete: if isOrgOwner(orgId);
+      allow read: if isValidId(orgId) && isOrgMember(orgId);
+      allow create: if isSignedIn() && !isAnonymous() && isValidId(orgId) && incoming().ownerUid == request.auth.uid;
+      allow update, delete: if isValidId(orgId) && isOrgOwner(orgId);
 
       match /members/{memberId} {
-        allow read: if isOrgMember(orgId);
-        allow create: if isSignedIn() && (request.auth.uid == memberId || isOrgOwner(orgId));
-        allow update, delete: if isOrgOwner(orgId) || (isSignedIn() && request.auth.uid == memberId);
+        allow read: if isValidId(orgId) && isOrgMember(orgId);
+        allow create: if isSignedIn() && !isAnonymous() &&
+          isValidId(orgId) && isValidId(memberId) &&
+          isValidMemberData(incoming(), memberId) &&
+          (
+            (
+              isOrgOwner(orgId) &&
+              (
+                incoming().role == 'member' ||
+                (incoming().role == 'owner' && memberId == get(/databases/$(database)/documents/orgs/$(orgId)).data.ownerUid)
+              )
+            ) ||
+            (
+              request.auth.uid == memberId &&
+              incoming().role == 'member' &&
+              incoming().keys().hasAll(['code']) &&
+              isValidInviteCode(orgId, incoming().code)
+            )
+          );
+        allow update: if isSignedIn() && !isAnonymous() &&
+          isValidId(orgId) && isValidId(memberId) &&
+          isValidMemberData(incoming(), memberId) &&
+          incoming().uid == existing().uid &&
+          (
+            (
+              isOrgOwner(orgId) &&
+              (
+                incoming().role == 'member' ||
+                (incoming().role == 'owner' && memberId == get(/databases/$(database)/documents/orgs/$(orgId)).data.ownerUid)
+              )
+            ) ||
+            (
+              request.auth.uid == memberId &&
+              incoming().role == existing().role &&
+              !incoming().diff(existing()).affectedKeys().hasAny(['role', 'uid'])
+            )
+          );
+        allow delete: if isSignedIn() && !isAnonymous() &&
+          isValidId(orgId) && isValidId(memberId) &&
+          (isOrgOwner(orgId) || request.auth.uid == memberId);
       }
     }
 
@@ -66,13 +130,14 @@ service cloud.firestore {
       );
 
       allow create: if isSignedIn() && !isAnonymous() &&
+        isValidId(decisionId) &&
         incoming().orgId is string &&
         exists(/databases/$(database)/documents/orgs/$(incoming().orgId)/members/$(request.auth.uid)) &&
         incoming().creator.uid == request.auth.uid &&
         incoming().title is string && incoming().title.size() <= 150 &&
         incoming().description is string && incoming().description.size() <= 3000;
 
-      allow update: if isSignedIn() && (
+      allow update: if isSignedIn() && isValidId(decisionId) && (
         (
           existing().audience == 'link' &&
           incoming().diff(existing()).affectedKeys().hasOnly(['options']) &&
@@ -94,7 +159,7 @@ service cloud.firestore {
         )
       );
 
-      allow delete: if isSignedIn() && !isAnonymous() && (existing().creator.uid == request.auth.uid || isOrgOwner(existing().orgId));
+      allow delete: if isSignedIn() && !isAnonymous() && isValidId(decisionId) && (existing().creator.uid == request.auth.uid || isOrgOwner(existing().orgId));
 
       match /votes/{voteId} {
         allow read: if isSignedIn() && (
@@ -104,6 +169,7 @@ service cloud.firestore {
           exists(/databases/$(database)/documents/orgs/$(get(/databases/$(database)/documents/decisions/$(decisionId)).data.orgId)/members/$(request.auth.uid))
         );
         allow create: if isSignedIn() &&
+          isValidId(decisionId) && isValidId(voteId) &&
           voteId == request.auth.uid &&
           resource == null &&
           request.time < get(/databases/$(database)/documents/decisions/$(decisionId)).data.deadlineTs &&

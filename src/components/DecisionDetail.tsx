@@ -20,7 +20,7 @@ import { doc, getDoc } from 'firebase/firestore';
 interface DecisionDetailProps {
   decision: Decision;
   onBack: () => void;
-  onVote: (decisionId: string, optionIds: string[], ratingValue?: number) => void;
+  onVote: (decisionId: string, optionIds: string[], ratingValue?: number) => Promise<boolean | void> | void;
   onAddComment: (decisionId: string, text: string) => void;
   onSaveFinalDecision?: (decisionId: string, finalDecision: { text: string; responsible: string; date: string }) => void;
 }
@@ -148,13 +148,35 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
     }
   };
 
-  const handleConfirmVote = () => {
+  const handleConfirmVote = async () => {
     if (isExpired || hasVoted) return;
-    
+
     if (decision.type === 'rating' && pendingRating !== null) {
-      onVote(decision.id, [String(pendingRating - 1)], pendingRating);
+      const ratingOptId = String(decision.options[pendingRating - 1]?.id ?? pendingRating - 1);
+      const votedOpts = [ratingOptId];
+      const chosenRating = pendingRating;
+      setHasVoted(true);
+      setUserVotedOptions(votedOpts);
+      setUserRating(chosenRating);
+      setPendingRating(null);
+      const res = await onVote(decision.id, votedOpts, chosenRating);
+      if (res === false) {
+        setHasVoted(false);
+        setUserVotedOptions([]);
+        setUserRating(undefined);
+        setPendingRating(chosenRating);
+      }
     } else if (selectedOptions.length > 0) {
-      onVote(decision.id, selectedOptions);
+      const votedOpts = [...selectedOptions];
+      setHasVoted(true);
+      setUserVotedOptions(votedOpts);
+      setSelectedOptions([]);
+      const res = await onVote(decision.id, votedOpts);
+      if (res === false) {
+        setHasVoted(false);
+        setUserVotedOptions([]);
+        setSelectedOptions(votedOpts);
+      }
     }
   };
 
@@ -434,11 +456,16 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
                                 <Star key={s} className={`w-4 h-4 ${s <= Math.round(parseFloat(ratingInfo?.average || '0')) ? 'fill-amber-400 text-amber-400' : 'text-slate-200 dark:text-gray-700'}`} />
                               ))}
                             </div>
-                            <p className="text-xs text-gray-500 font-medium">Su {ratingInfo?.total} voti.</p>
+                            <p className="text-xs text-gray-500 font-medium">
+                              Su {ratingInfo?.total} voti.{userRating ? ` Il tuo voto: ${userRating}/5.` : ''}
+                            </p>
                           </div>
                         </div>
                       ) : (
-                        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl text-center">
+                        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl text-center space-y-1">
+                          {userRating && (
+                            <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">Hai votato: {userRating} su 5 stelle</p>
+                          )}
                           <p className="text-xs text-slate-500">I risultati saranno visibili dopo il voto o a chiusura.</p>
                         </div>
                       )}

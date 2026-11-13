@@ -14,7 +14,7 @@ import {
   AuthError
 } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import firebaseConfigFile from '../../firebase-applet-config.json' with { type: 'json' };
+import firebaseConfigFile from '../../firebase-applet-config.json';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseConfigFile.apiKey,

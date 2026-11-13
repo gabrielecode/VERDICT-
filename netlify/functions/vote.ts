@@ -1,15 +1,39 @@
+import type { Context } from '@netlify/functions';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
-const app =
-  getApps()[0] ??
-  (process.env.FIREBASE_SERVICE_ACCOUNT
-    ? initializeApp({
-        credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
-      })
-    : initializeApp());
-const db = getFirestore(app, process.env.FIREBASE_DATABASE_ID || '(default)');
+function getFirebaseAdminApp() {
+  if (getApps().length > 0) return getApps()[0];
+
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    return initializeApp({
+      credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
+    });
+  }
+
+  if (
+    process.env.FIREBASE_PROJECT_ID &&
+    process.env.FIREBASE_CLIENT_EMAIL &&
+    process.env.FIREBASE_PRIVATE_KEY
+  ) {
+    return initializeApp({
+      credential: cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      }),
+    });
+  }
+
+  return initializeApp();
+}
+
+const app = getFirebaseAdminApp();
+const db = getFirestore(
+  app,
+  process.env.FIREBASE_DATABASE_ID || process.env.VITE_FIREBASE_DATABASE_ID || '(default)'
+);
 
 class HttpError extends Error {
   status: number;
@@ -25,7 +49,7 @@ const json = (status: number, body: unknown) =>
     headers: { 'content-type': 'application/json' },
   });
 
-export default async (req: Request) => {
+export default async (req: Request, _context: Context) => {
   if (req.method !== 'POST') return json(405, { error: 'METHOD' });
 
   const token = (req.headers.get('authorization') || '').replace(/^Bearer /, '');
@@ -87,7 +111,7 @@ export default async (req: Request) => {
       if (chosen.length < 1 || !chosen.every((id) => validIds.has(id))) throw new HttpError(400, 'INVALID');
 
       if (d.type === 'multiple') {
-        // piu' opzioni consentite
+        // più opzioni consentite
       } else if (chosen.length !== 1) {
         throw new HttpError(400, 'INVALID');
       }

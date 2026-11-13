@@ -19,7 +19,8 @@ import {
   ShieldCheck,
   X,
   Building,
-  Key
+  Key,
+  Star
 } from 'lucide-react';
 import { 
   collection, 
@@ -72,6 +73,8 @@ export default function App() {
   const [publicVoted, setPublicVoted] = useState(false);
   const [publicSelectedOptions, setPublicSelectedOptions] = useState<string[]>([]);
   const [publicPendingRating, setPublicPendingRating] = useState<number | null>(null);
+  const [publicHoverRating, setPublicHoverRating] = useState<number | null>(null);
+  const [publicUserRating, setPublicUserRating] = useState<number | undefined>(undefined);
   const [publicVoterName, setPublicVoterName] = useState('');
 
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -127,7 +130,11 @@ export default function App() {
 
       getDoc(doc(db, 'decisions', publicDecisionId, 'votes', u.uid)).then(snap => {
         if (snap.exists()) {
+          const data = snap.data();
           setPublicVoted(true);
+          if (typeof data.ratingValue === 'number') {
+            setPublicUserRating(data.ratingValue);
+          }
         }
       }).catch(() => {});
     });
@@ -171,6 +178,16 @@ export default function App() {
 
     const handlePublicVote = async () => {
       if (!auth.currentUser) return;
+      const isRating = publicDecision.type === 'rating';
+      if (isRating && (publicPendingRating === null || !Number.isInteger(publicPendingRating))) {
+        return;
+      }
+      const numericRating = isRating ? Number(publicPendingRating) : undefined;
+      const optionIdsToSend =
+        isRating && numericRating !== undefined
+          ? [String(publicDecision.options[numericRating - 1]?.id ?? numericRating - 1)]
+          : publicSelectedOptions;
+
       try {
         const response = await fetch('/api/vote', {
           method: 'POST',
@@ -180,8 +197,8 @@ export default function App() {
           },
           body: JSON.stringify({
             decisionId: publicDecisionId,
-            optionIds: publicSelectedOptions,
-            ratingValue: publicPendingRating,
+            optionIds: optionIdsToSend,
+            ratingValue: numericRating,
             voterName: publicDecision.isAnonymous ? undefined : publicVoterName
           })
         });
@@ -198,6 +215,9 @@ export default function App() {
           return;
         }
         setPublicVoted(true);
+        if (numericRating !== undefined) {
+          setPublicUserRating(numericRating);
+        }
         addToast('Voto registrato!', 'success');
       } catch (e: any) {
         addToast('Errore generico', 'error');
@@ -264,61 +284,145 @@ export default function App() {
             )}
 
             <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-4">
-                {publicDecision.options.map((opt, index) => {
-                  const percentage = totalVotes > 0 ? (opt.votes / totalVotes) * 100 : 0;
-                  const isSelected = publicSelectedOptions.includes(opt.id.toString());
-                  const optionLetter = String.fromCharCode(65 + index);
-
-                  return (
-                    <div key={opt.id} className="relative">
-                      {publicVoted || isExpired ? (
-                        <div className="border border-gray-200 dark:border-gray-800 rounded-2xl p-5 relative bg-white dark:bg-gray-950">
-                          {canShowResults && (
-                            <motion.div initial={{ width: 0 }} animate={{ width: `${percentage}%` }} className="absolute top-0 bottom-0 left-0 bg-blue-600 opacity-[0.04] -z-10" />
-                          )}
-                          <div className="flex items-center justify-between relative z-10">
-                            <div className="flex items-center gap-4 flex-1 min-w-0">
-                              <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 flex items-center justify-center font-bold text-sm shrink-0">{optionLetter}</div>
-                              <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">{opt.text}</span>
-                            </div>
-                            <div className="text-right shrink-0">
-                              {canShowResults ? (
-                                <span className="text-base font-black text-blue-600">{percentage.toFixed(0)}%</span>
-                              ) : (
-                                <span className="text-xs text-slate-400 font-medium">Risultati nascosti</span>
-                              )}
-                            </div>
-                          </div>
-                          {canShowResults && (
-                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 dark:bg-gray-800 rounded-b-2xl">
-                              <motion.div initial={{ width: 0 }} animate={{ width: `${percentage}%` }} className="h-full bg-blue-600" />
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (publicDecision.type === 'single') {
-                              setPublicSelectedOptions([opt.id.toString()]);
-                            } else {
-                              const exists = publicSelectedOptions.includes(opt.id.toString());
-                              setPublicSelectedOptions(exists ? publicSelectedOptions.filter(id => id !== opt.id.toString()) : [...publicSelectedOptions, opt.id.toString()]);
-                            }
-                          }}
-                          className={`w-full text-left border-2 rounded-2xl p-5 transition flex items-center gap-4 ${isSelected ? 'border-blue-600 bg-blue-50/20 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900'}`}
-                        >
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>{optionLetter}</div>
-                          <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex-1">{opt.text}</span>
-                        </button>
+              {publicDecision.type === 'rating' ? (
+                <div className="space-y-6">
+                  {!publicVoted && !isExpired ? (
+                    <div className="flex flex-col items-center justify-center p-8 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 space-y-3">
+                      <div className="flex gap-2">
+                        {[1, 2, 3, 4, 5].map((starValue) => (
+                          <motion.button
+                            key={starValue}
+                            type="button"
+                            aria-label={`${starValue} ${starValue === 1 ? 'stella' : 'stelle'}`}
+                            onMouseEnter={() => setPublicHoverRating(starValue)}
+                            onMouseLeave={() => setPublicHoverRating(null)}
+                            onClick={() => {
+                              setPublicPendingRating(starValue);
+                              const optId = String(publicDecision.options[starValue - 1]?.id ?? starValue - 1);
+                              setPublicSelectedOptions([optId]);
+                            }}
+                            whileTap={{ scale: 0.9 }}
+                            className="p-1 cursor-pointer"
+                          >
+                            <Star
+                              className={`w-10 h-10 transition-colors ${
+                                starValue <= (publicHoverRating ?? publicPendingRating ?? 0)
+                                  ? 'fill-amber-400 text-amber-400'
+                                  : 'text-gray-200 dark:text-gray-700 hover:text-amber-300'
+                              }`}
+                            />
+                          </motion.button>
+                        ))}
+                      </div>
+                      {publicPendingRating !== null && (
+                        <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                          Valutazione selezionata: {publicPendingRating} / 5
+                        </p>
                       )}
                     </div>
-                  );
-                })}
-              </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {canShowResults ? (() => {
+                        const avgRating = totalVotes > 0
+                          ? (publicDecision.options.reduce((sum, opt, idx) => sum + opt.votes * (idx + 1), 0) / totalVotes).toFixed(1)
+                          : '–';
+                        return (
+                          <div className="flex items-center gap-5 p-5 bg-gradient-to-r from-amber-500/5 to-orange-500/5 rounded-2xl border border-amber-500/10">
+                            <div className="text-center px-4 py-2 bg-white dark:bg-gray-950 rounded-xl shadow-xs border border-amber-100 dark:border-amber-900/30">
+                              <span className="text-3xl font-black text-amber-500 block leading-tight">{avgRating}</span>
+                              <span className="text-xs text-slate-400 font-bold uppercase">su 5</span>
+                            </div>
+                            <div>
+                              <div className="flex gap-1 text-amber-400 mb-1">
+                                {[1, 2, 3, 4, 5].map((s) => (
+                                  <Star
+                                    key={s}
+                                    className={`w-4 h-4 ${
+                                      s <= Math.round(parseFloat(avgRating === '–' ? '0' : avgRating))
+                                        ? 'fill-amber-400 text-amber-400'
+                                        : 'text-slate-200 dark:text-gray-700'
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                              <p className="text-xs text-gray-500 font-medium">
+                                Su {totalVotes} {totalVotes === 1 ? 'voto' : 'voti'}.
+                                {publicUserRating ? ` Il tuo voto: ${publicUserRating}/5.` : ''}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })() : (
+                        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl text-center space-y-1">
+                          {publicUserRating && (
+                            <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">Hai votato: {publicUserRating} su 5 stelle</p>
+                          )}
+                          <p className="text-xs text-slate-500">I risultati saranno visibili dopo il voto o a chiusura.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {publicDecision.options.map((opt, index) => {
+                    const percentage = totalVotes > 0 ? (opt.votes / totalVotes) * 100 : 0;
+                    const isSelected = publicSelectedOptions.includes(opt.id.toString());
+                    const optionLetter = String.fromCharCode(65 + index);
 
-              {!publicVoted && !isExpired && publicSelectedOptions.length > 0 && (
+                    return (
+                      <div key={opt.id} className="relative">
+                        {publicVoted || isExpired ? (
+                          <div className="border border-gray-200 dark:border-gray-800 rounded-2xl p-5 relative bg-white dark:bg-gray-950">
+                            {canShowResults && (
+                              <motion.div initial={{ width: 0 }} animate={{ width: `${percentage}%` }} className="absolute top-0 bottom-0 left-0 bg-blue-600 opacity-[0.04] -z-10" />
+                            )}
+                            <div className="flex items-center justify-between relative z-10">
+                              <div className="flex items-center gap-4 flex-1 min-w-0">
+                                <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 flex items-center justify-center font-bold text-sm shrink-0">{optionLetter}</div>
+                                <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">{opt.text}</span>
+                              </div>
+                              <div className="text-right shrink-0">
+                                {canShowResults ? (
+                                  <span className="text-base font-black text-blue-600">{percentage.toFixed(0)}%</span>
+                                ) : (
+                                  <span className="text-xs text-slate-400 font-medium">Risultati nascosti</span>
+                                )}
+                              </div>
+                            </div>
+                            {canShowResults && (
+                              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 dark:bg-gray-800 rounded-b-2xl">
+                                <motion.div initial={{ width: 0 }} animate={{ width: `${percentage}%` }} className="h-full bg-blue-600" />
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (publicDecision.type === 'single' || publicDecision.type === 'yes_no') {
+                                setPublicSelectedOptions([opt.id.toString()]);
+                              } else {
+                                const exists = publicSelectedOptions.includes(opt.id.toString());
+                                setPublicSelectedOptions(exists ? publicSelectedOptions.filter(id => id !== opt.id.toString()) : [...publicSelectedOptions, opt.id.toString()]);
+                              }
+                            }}
+                            className={`w-full text-left border-2 rounded-2xl p-5 transition flex items-center gap-4 ${isSelected ? 'border-blue-600 bg-blue-50/20 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900'}`}
+                          >
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>{optionLetter}</div>
+                            <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex-1">{opt.text}</span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {!publicVoted && !isExpired && (
+                (publicDecision.type === 'rating' && publicPendingRating !== null) ||
+                (publicDecision.type !== 'rating' && publicSelectedOptions.length > 0)
+              ) && (
                 <div className="flex justify-end pt-4">
                   <button
                     onClick={handlePublicVote}
@@ -730,8 +834,29 @@ export default function App() {
     }
   };
 
-  const handleCheckout = () => {
-    addToast('Piano Pro in arrivo a breve! Contattaci per l\'accesso anticipato.', 'info');
+  const handleCheckout = async () => {
+    if (!auth.currentUser || !org?.id) {
+      addToast('Piano Pro in arrivo a breve! Contattaci per l\'accesso anticipato.', 'info');
+      return;
+    }
+    try {
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${await auth.currentUser.getIdToken()}`
+        },
+        body: JSON.stringify({ orgId: org.id })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && typeof data.url === 'string' && data.url) {
+        window.location.assign(data.url);
+        return;
+      }
+      addToast('Piano Pro in arrivo a breve! Contattaci per l\'accesso anticipato.', 'info');
+    } catch {
+      addToast('Piano Pro in arrivo a breve! Contattaci per l\'accesso anticipato.', 'info');
+    }
   };
 
   const handlePublishDecision = async (newDecision: Omit<Decision, 'id'>) => {
@@ -757,8 +882,8 @@ export default function App() {
     }
   };
 
-  const handleVote = async (decisionId: string, optionIds: string[], ratingValue?: number) => {
-    if (!auth.currentUser) return;
+  const handleVote = async (decisionId: string, optionIds: string[], ratingValue?: number): Promise<boolean> => {
+    if (!auth.currentUser) return false;
     try {
       const response = await fetch('/api/vote', {
         method: 'POST',
@@ -777,16 +902,19 @@ export default function App() {
         const errData = await response.json().catch(() => ({}));
         if (errData.error === 'ALREADY_VOTED') {
           addToast('Hai già votato questa proposta.', 'warning');
+          return true;
         } else if (errData.error === 'CLOSED') {
           addToast('Votazione chiusa.', 'error');
         } else {
           addToast('Errore generico', 'error');
         }
-        return;
+        return false;
       }
       addToast('Voto registrato!', 'success');
+      return true;
     } catch (e: any) {
       addToast('Errore generico', 'error');
+      return false;
     }
   };
 

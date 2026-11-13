@@ -30,7 +30,7 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, removeTo
             className="bg-white dark:bg-gray-900 p-4 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 flex items-center gap-3 w-full pointer-events-auto"
           >
             {getIcon(toast.type)}
-            <p className="text-xs font-semibold text-gray-800 flex-1">{toast.message}</p>
+            <p className="text-xs font-semibold text-gray-800 dark:text-gray-100 flex-1">{toast.message}</p>
             <button
               onClick={() => removeToast(toast.id)}
               className="text-gray-400 hover:text-gray-600 transition"

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldAlert, ExternalLink, Copy, Check, X, RefreshCw, AlertCircle, Sparkles } from 'lucide-react';
-import firebaseConfig from '../../firebase-applet-config.json' with { type: 'json' };
+import firebaseConfig from '../../firebase-applet-config.json';
 
 interface AuthDomainModalProps {
   isOpen: boolean;
