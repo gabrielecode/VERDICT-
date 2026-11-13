@@ -31,10 +31,11 @@ export interface Comment {
   role?: string;
   text: string;
   timestamp: string;
+  uid?: string;
 }
 
 export type DecisionType = 'single' | 'multiple' | 'yes_no' | 'rating';
-export type DecisionAudience = 'public' | 'private' | 'restricted';
+export type DecisionAudience = 'org' | 'private' | 'link';
 
 export interface Vote {
   userId: string;
@@ -45,6 +46,7 @@ export interface Vote {
 
 export interface Decision {
   id: string;
+  orgId: string;
   title: string;
   description: string;
   type: DecisionType;
@@ -52,6 +54,8 @@ export interface Decision {
   category: string;
   deadline: string;
   audience: DecisionAudience;
+  isAnonymous?: boolean;
+  resultsVisibility?: 'always' | 'after_vote' | 'closed';
   creator: Creator;
   votedOptionIds?: string[];
   ratingValue?: number;
@@ -62,21 +66,28 @@ export interface Decision {
   votes?: Vote[];
 }
 
+export interface TeamMember {
+  id: string;
+  uid: string;
+  role: 'owner' | 'member';
+  name: string;
+  email: string;
+  joinedAt: string;
+  avatar: string;
+  status?: string;
+}
+
+export interface Organization {
+  id: string;
+  name: string;
+  ownerUid: string;
+  createdAt: string;
+  inviteCode: string;
+}
+
 export interface AuditLog {
   id: string;
   action: string;
   timestamp: string;
   user: string;
-}
-
-export interface TeamMember {
-  id: string;
-  name: string;
-  surname: string;
-  department: string;
-  email: string;
-  phone: string;
-  role: string;
-  avatar: string;
-  status: string;
 }

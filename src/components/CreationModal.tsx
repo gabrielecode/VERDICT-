@@ -39,7 +39,9 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
   
   const [deadlineDate, setDeadlineDate] = useState('');
   const [deadlineTime, setDeadlineTime] = useState('18:00');
-  const [audience, setAudience] = useState<DecisionAudience>('public');
+  const [audience, setAudience] = useState<DecisionAudience>('org');
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [resultsVisibility, setResultsVisibility] = useState<'always' | 'after_vote' | 'closed'>('always');
 
   const [attachments, setAttachments] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -165,12 +167,15 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
 
     const newDecision: Decision = {
       id: '',
+      orgId: '',
       title: title.trim(),
       description: description.trim(),
       type: decisionType,
       category: category,
       deadline: finalDeadline,
       audience: audience,
+      isAnonymous,
+      resultsVisibility,
       creator: {
         name: '',
         role: '',
@@ -192,6 +197,8 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
     setDecisionType('single');
     setOptions(['', '']);
     setAttachments([]);
+    setIsAnonymous(false);
+    setResultsVisibility('always');
   };
 
   return (
@@ -482,9 +489,9 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                   </label>
                   <div className="space-y-2">
                     {[
-                      { id: 'public', label: 'Pubblico', icon: Globe },
-                      { id: 'restricted', label: 'Membri Team', icon: Shield },
+                      { id: 'org', label: 'Organizzazione', icon: Globe },
                       { id: 'private', label: 'Privato', icon: Lock },
+                      { id: 'link', label: 'Chiunque abbia il link', icon: Globe },
                     ].map((aud) => (
                       <div
                         key={aud.id}
@@ -500,6 +507,54 @@ export const CreationModal: React.FC<CreationModalProps> = ({ isOpen, onClose, o
                           <h4 className="font-bold text-gray-900 dark:text-white text-xs">{aud.label}</h4>
                         </div>
                         {audience === aud.id && <CheckCircle2 className="w-4 h-4 text-blue-600" />}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2.5">
+                    Voto Anonimo
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsAnonymous(false)}
+                      className={`p-3 rounded-xl border text-xs font-bold transition cursor-pointer ${!isAnonymous ? 'border-blue-600 bg-blue-50/20 text-blue-600' : 'border-gray-200 text-gray-600 dark:text-gray-300'}`}
+                    >
+                      No (Palese)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsAnonymous(true)}
+                      className={`p-3 rounded-xl border text-xs font-bold transition cursor-pointer ${isAnonymous ? 'border-blue-600 bg-blue-50/20 text-blue-600' : 'border-gray-200 text-gray-600 dark:text-gray-300'}`}
+                    >
+                      Sì (Anonimo)
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2.5">
+                    Mostra Risultati
+                  </label>
+                  <div className="space-y-2">
+                    {[
+                      { id: 'always', label: 'Sempre' },
+                      { id: 'after_vote', label: 'Dopo il mio voto' },
+                      { id: 'closed', label: 'A chiusura' },
+                    ].map((item) => (
+                      <div
+                        key={item.id}
+                        onClick={() => setResultsVisibility(item.id as any)}
+                        className={`p-3.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${
+                          resultsVisibility === item.id
+                            ? 'border-blue-600 bg-blue-50/25 dark:bg-blue-900/20'
+                            : 'border-gray-150 dark:border-gray-800 bg-white dark:bg-gray-800'
+                        }`}
+                      >
+                        <h4 className="font-bold text-gray-900 dark:text-white text-xs">{item.label}</h4>
+                        {resultsVisibility === item.id && <CheckCircle2 className="w-4 h-4 text-blue-600" />}
                       </div>
                     ))}
                   </div>

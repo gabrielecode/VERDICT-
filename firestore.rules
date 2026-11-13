@@ -1,7 +1,6 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default catch-all deny
     match /{document=**} {
       allow read, write: if false;
     }
@@ -10,16 +9,21 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isEmailVerified() {
-      return request.auth != null && request.auth.token.email_verified == true;
+    function isOrgMember(orgId) {
+      return isSignedIn() && exists(/databases/$(database)/documents/orgs/$(orgId)/members/$(request.auth.uid));
     }
 
-    function isAdmin() {
-      return isSignedIn() && request.auth.token.email == 'gestsocialgabriele@gmail.com';
+    function isOrgOwner(orgId) {
+      return isSignedIn() && exists(/databases/$(database)/documents/orgs/$(orgId)) && get(/databases/$(database)/documents/orgs/$(orgId)).data.ownerUid == request.auth.uid;
     }
 
-    function isCreator() {
-      return isSignedIn() && resource != null && resource.data.creator.uid == request.auth.uid;
+    function isAnonymous() {
+      return isSignedIn() && request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+
+    function isDecisionAnonymous(decisionId) {
+      let d = get(/databases/$(database)/documents/decisions/$(decisionId));
+      return d.data.keys().hasAll(['isAnonymous']) && d.data.isAnonymous == true;
     }
 
     function incoming() {
@@ -30,42 +34,84 @@ service cloud.firestore {
       return resource.data;
     }
 
-    // Decisions collection
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /inviteCodes/{code} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
+    }
+
+    match /orgs/{orgId} {
+      allow read: if isOrgMember(orgId);
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if isOrgOwner(orgId);
+
+      match /members/{memberId} {
+        allow read: if isOrgMember(orgId);
+        allow create: if isSignedIn() && (request.auth.uid == memberId || isOrgOwner(orgId));
+        allow update, delete: if isOrgOwner(orgId) || (isSignedIn() && request.auth.uid == memberId);
+      }
+    }
+
     match /decisions/{decisionId} {
-      // Read allowed to signed in users if public, restricted, or created by the user (or admin)
       allow read: if isSignedIn() && (
-        isAdmin() ||
-        existing().audience == 'public' ||
-        existing().audience == 'restricted' ||
-        (existing().keys().hasAll(['creator']) && existing().creator.uid == request.auth.uid)
+        resource.data.audience == 'link' ||
+        (exists(/databases/$(database)/documents/orgs/$(resource.data.orgId)/members/$(request.auth.uid)) && (
+          resource.data.audience == 'org' ||
+          (resource.data.audience == 'private' && resource.data.creator.uid == request.auth.uid)
+        ))
       );
 
-      // Create allowed to signed-in users setting themselves as creator
-      allow create: if isSignedIn() &&
+      allow create: if isSignedIn() && !isAnonymous() &&
+        incoming().orgId is string &&
+        exists(/databases/$(database)/documents/orgs/$(incoming().orgId)/members/$(request.auth.uid)) &&
         incoming().creator.uid == request.auth.uid &&
         incoming().title is string && incoming().title.size() <= 150 &&
         incoming().description is string && incoming().description.size() <= 3000;
 
-      // Update allowed to creator, admin, or voting/commenting by signed in users
       allow update: if isSignedIn() && (
-        isCreator() ||
-        isAdmin() ||
-        // Action: Commenting
-        incoming().diff(existing()).affectedKeys().hasOnly(['comments']) ||
-        // Action: Voting (allowed only if user has not already voted)
         (
-          incoming().diff(existing()).affectedKeys().hasOnly(['votes', 'options'])
+          existing().audience == 'link' &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['options']) &&
+          getAfter(/databases/$(database)/documents/decisions/$(decisionId)/votes/$(request.auth.uid)) != null
+        ) ||
+        (
+          exists(/databases/$(database)/documents/orgs/$(existing().orgId)/members/$(request.auth.uid)) && (
+            existing().creator.uid == request.auth.uid ||
+            isOrgOwner(existing().orgId) ||
+            (
+              incoming().diff(existing()).affectedKeys().hasOnly(['comments']) &&
+              incoming().comments[incoming().comments.size() - 1].uid == request.auth.uid
+            ) ||
+            (
+              incoming().diff(existing()).affectedKeys().hasOnly(['options']) &&
+              getAfter(/databases/$(database)/documents/decisions/$(decisionId)/votes/$(request.auth.uid)) != null
+            )
+          )
         )
       );
 
-      // Delete allowed only to decision creator or admin
-      allow delete: if isAdmin() || isCreator();
-    }
+      allow delete: if isSignedIn() && !isAnonymous() && (existing().creator.uid == request.auth.uid || isOrgOwner(existing().orgId));
 
-    // Members collection
-    match /members/{memberId} {
-      allow read: if isSignedIn();
-      allow create, update, delete: if isAdmin();
+      match /votes/{voteId} {
+        allow read: if isSignedIn() && (
+          !isDecisionAnonymous(decisionId) || voteId == request.auth.uid
+        ) && (
+          get(/databases/$(database)/documents/decisions/$(decisionId)).data.audience == 'link' ||
+          exists(/databases/$(database)/documents/orgs/$(get(/databases/$(database)/documents/decisions/$(decisionId)).data.orgId)/members/$(request.auth.uid))
+        );
+        allow create: if isSignedIn() &&
+          voteId == request.auth.uid &&
+          resource == null &&
+          request.time < get(/databases/$(database)/documents/decisions/$(decisionId)).data.deadlineTs &&
+          incoming().userId == request.auth.uid && (
+            get(/databases/$(database)/documents/decisions/$(decisionId)).data.audience == 'link' ||
+            exists(/databases/$(database)/documents/orgs/$(get(/databases/$(database)/documents/decisions/$(decisionId)).data.orgId)/members/$(request.auth.uid))
+          );
+        allow update, delete: if false;
+      }
     }
   }
 }

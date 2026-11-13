@@ -37,7 +37,7 @@ export const DecisionCard: React.FC<DecisionCardProps> = ({ decision, onClick })
 
   const handleCopyLink = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const shareUrl = `${window.location.origin}?decisionId=${decision.id}`;
+    const shareUrl = `${window.location.origin}/v/${decision.id}`;
     navigator.clipboard.writeText(shareUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -57,12 +57,10 @@ export const DecisionCard: React.FC<DecisionCardProps> = ({ decision, onClick })
           <span>{statusText}</span>
           <span aria-hidden="true" className="opacity-40">·</span>
           <div className="flex items-center gap-1">
-            {decision.audience === 'public' ? (
+            {decision.audience === 'org' ? (
               <Globe className="w-3 h-3" />
-            ) : decision.audience === 'private' ? (
-              <Lock className="w-3 h-3" />
             ) : (
-              <Shield className="w-3 h-3" />
+              <Lock className="w-3 h-3" />
             )}
             {decision.audience}
           </div>
@@ -114,7 +112,7 @@ export const DecisionCard: React.FC<DecisionCardProps> = ({ decision, onClick })
             </span>
           </div>
 
-            {decision.participants && decision.participants.length > 0 && (
+            {!decision.isAnonymous && decision.participants && decision.participants.length > 0 && (
               <div className="flex items-center">
                 <div className="flex -space-x-2 overflow-hidden">
                   {decision.participants.slice(0, 3).map((p, idx) => (

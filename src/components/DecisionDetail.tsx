@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 import { Decision } from '../types';
 import { getTimeRemaining, getCategoryStyles, formatDate, TimeRemaining } from '../utils';
-import { auth } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface DecisionDetailProps {
   decision: Decision;
@@ -29,10 +30,13 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
 }) => {
   const [timeLeft, setTimeLeft] = useState<TimeRemaining>(getTimeRemaining(decision.deadline));
   const [newComment, setNewComment] = useState('');
-  const [selectedOptions, setSelectedOptions] = useState<string[]>(decision.votedOptionIds || []);
+  const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
   const [pendingRating, setPendingRating] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
+  const [userVotedOptions, setUserVotedOptions] = useState<string[]>([]);
+  const [userRating, setUserRating] = useState<number | undefined>(undefined);
+  const [hasVoted, setHasVoted] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -43,12 +47,29 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
   }, [decision.deadline]);
 
   useEffect(() => {
-    setSelectedOptions(decision.votedOptionIds || []);
-  }, [decision.votedOptionIds]);
+    if (!auth.currentUser) return;
+    const voteRef = doc(db, 'decisions', decision.id, 'votes', auth.currentUser.uid);
+    getDoc(voteRef).then(snap => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setUserVotedOptions(data.optionIds || []);
+        setUserRating(data.ratingValue);
+        setHasVoted(true);
+      } else {
+        setUserVotedOptions([]);
+        setUserRating(undefined);
+        setHasVoted(false);
+      }
+    }).catch(() => {});
+  }, [decision.id]);
 
   const totalVotes = decision.options.reduce((sum, opt) => sum + opt.votes, 0);
   const isExpired = timeLeft.status === 'expired';
-  const hasVoted = (decision.votedOptionIds && decision.votedOptionIds.length > 0) || (decision.ratingValue !== undefined);
+  const resultsVis = decision.resultsVisibility || 'always';
+  const canShowResults = 
+    resultsVis === 'always' || 
+    (resultsVis === 'after_vote' && hasVoted) || 
+    (resultsVis === 'closed' && isExpired);
 
   const getTimerBreakdown = () => {
     if (isExpired) return null;
@@ -63,7 +84,7 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
   const timerBreakdown = getTimerBreakdown();
 
   const handleCopyLink = () => {
-    const shareUrl = `${window.location.origin}?decisionId=${decision.id}`;
+    const shareUrl = `${window.location.origin}/v/${decision.id}`;
     navigator.clipboard.writeText(shareUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 3000);
@@ -124,7 +145,7 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
     if (isExpired || hasVoted) return;
     
     if (decision.type === 'rating' && pendingRating !== null) {
-      onVote(decision.id, [], pendingRating);
+      onVote(decision.id, [String(pendingRating - 1)], pendingRating);
     } else if (selectedOptions.length > 0) {
       onVote(decision.id, selectedOptions);
     }
@@ -294,20 +315,26 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
                     </div>
                   ) : (
                     <div className="space-y-6">
-                      <div className="flex items-center gap-5 p-5 bg-gradient-to-r from-amber-500/5 to-orange-500/5 rounded-2xl border border-amber-500/10">
-                        <div className="text-center px-4 py-2 bg-white dark:bg-gray-950 rounded-xl shadow-xs border border-amber-100 dark:border-amber-900/30">
-                          <span className="text-3xl font-black text-amber-500 block leading-tight">{ratingInfo?.average}</span>
-                          <span className="text-xs text-slate-400 font-bold uppercase">su 5</span>
-                        </div>
-                        <div>
-                          <div className="flex gap-1 text-amber-400 mb-1">
-                            {[1, 2, 3, 4, 5].map((s) => (
-                              <Star key={s} className={`w-4 h-4 ${s <= Math.round(parseFloat(ratingInfo?.average || '0')) ? 'fill-amber-400 text-amber-400' : 'text-slate-200 dark:text-gray-700'}`} />
-                            ))}
+                      {canShowResults ? (
+                        <div className="flex items-center gap-5 p-5 bg-gradient-to-r from-amber-500/5 to-orange-500/5 rounded-2xl border border-amber-500/10">
+                          <div className="text-center px-4 py-2 bg-white dark:bg-gray-950 rounded-xl shadow-xs border border-amber-100 dark:border-amber-900/30">
+                            <span className="text-3xl font-black text-amber-500 block leading-tight">{ratingInfo?.average}</span>
+                            <span className="text-xs text-slate-400 font-bold uppercase">su 5</span>
                           </div>
-                          <p className="text-xs text-gray-500 font-medium">Su {ratingInfo?.total} voti.</p>
+                          <div>
+                            <div className="flex gap-1 text-amber-400 mb-1">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <Star key={s} className={`w-4 h-4 ${s <= Math.round(parseFloat(ratingInfo?.average || '0')) ? 'fill-amber-400 text-amber-400' : 'text-slate-200 dark:text-gray-700'}`} />
+                              ))}
+                            </div>
+                            <p className="text-xs text-gray-500 font-medium">Su {ratingInfo?.total} voti.</p>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl text-center">
+                          <p className="text-xs text-slate-500">I risultati saranno visibili dopo il voto o a chiusura.</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -318,26 +345,34 @@ export const DecisionDetail: React.FC<DecisionDetailProps> = ({
                   {decision.options.map((opt, index) => {
                     const percentage = totalVotes > 0 ? (opt.votes / totalVotes) * 100 : 0;
                     const isOptionSelected = selectedOptions.includes(opt.id.toString());
-                    const userVotedForThis = decision.votedOptionIds?.includes(opt.id.toString());
+                    const userVotedForThis = userVotedOptions.includes(opt.id.toString());
                     const optionLetter = String.fromCharCode(65 + index);
 
                     return (
                       <div key={opt.id} className="relative">
                         {hasVoted || isExpired ? (
                           <div className={`border rounded-2xl p-5 transition relative bg-white dark:bg-gray-950 ${userVotedForThis ? 'border-blue-500 bg-blue-50/10 dark:bg-blue-900/10' : 'border-gray-200 dark:border-gray-800'}`}>
-                            <motion.div initial={{ width: 0 }} animate={{ width: `${percentage}%` }} className={`absolute top-0 bottom-0 left-0 opacity-[0.04] -z-10 ${userVotedForThis ? 'bg-blue-600' : 'bg-gray-500'}`} />
+                            {canShowResults && (
+                              <motion.div initial={{ width: 0 }} animate={{ width: `${percentage}%` }} className={`absolute top-0 bottom-0 left-0 opacity-[0.04] -z-10 ${userVotedForThis ? 'bg-blue-600' : 'bg-gray-500'}`} />
+                            )}
                             <div className="flex items-center justify-between relative z-10">
                               <div className="flex items-center gap-4 flex-1 min-w-0">
                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${userVotedForThis ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>{optionLetter}</div>
                                 <span className={`text-sm font-semibold truncate ${userVotedForThis ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>{opt.text}</span>
                               </div>
                               <div className="text-right flex items-center gap-4 shrink-0">
-                                <span className={`text-base font-black ${userVotedForThis ? 'text-blue-600' : 'text-gray-800 dark:text-gray-200'}`}>{percentage.toFixed(0)}%</span>
+                                {canShowResults ? (
+                                  <span className={`text-base font-black ${userVotedForThis ? 'text-blue-600' : 'text-gray-800 dark:text-gray-200'}`}>{percentage.toFixed(0)}%</span>
+                                ) : (
+                                  <span className="text-xs text-slate-400 font-medium">Risultati nascosti</span>
+                                )}
                               </div>
                             </div>
-                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 dark:bg-gray-800 rounded-b-2xl">
-                              <motion.div initial={{ width: 0 }} animate={{ width: `${percentage}%` }} className={`h-full ${userVotedForThis ? 'bg-blue-600' : 'bg-gray-400'}`} />
-                            </div>
+                            {canShowResults && (
+                              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 dark:bg-gray-800 rounded-b-2xl">
+                                <motion.div initial={{ width: 0 }} animate={{ width: `${percentage}%` }} className={`h-full ${userVotedForThis ? 'bg-blue-600' : 'bg-gray-400'}`} />
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <motion.button onClick={() => handleVoteSubmit(opt.id.toString())} whileTap={{ scale: 0.98 }} className={`w-full text-left border-2 rounded-2xl p-5 transition flex items-center gap-4 ${isOptionSelected ? 'border-blue-600 bg-blue-50/20 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900'}`}>

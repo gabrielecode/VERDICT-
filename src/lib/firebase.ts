@@ -1,15 +1,99 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, User } from 'firebase/auth';
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signInWithRedirect, 
+  getRedirectResult,
+  signInAnonymously,
+  signOut, 
+  User,
+  AuthError
+} from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import firebaseConfig from '../../firebase-applet-config.json' with { type: 'json' };
+import firebaseConfigFile from '../../firebase-applet-config.json' with { type: 'json' };
+
+// Support both Vercel environment variables (VITE_FIREBASE_*) and firebase-applet-config.json
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseConfigFile.apiKey,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfigFile.authDomain,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseConfigFile.projectId,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfigFile.storageBucket,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfigFile.messagingSenderId,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || firebaseConfigFile.appId,
+  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID || firebaseConfigFile.firestoreDatabaseId,
+};
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-export const googleAuthProvider = new GoogleAuthProvider();
 
-export const signInWithGoogle = () => signInWithPopup(auth, googleAuthProvider);
+export const googleAuthProvider = new GoogleAuthProvider();
+googleAuthProvider.setCustomParameters({
+  prompt: 'select_account'
+});
+
+export const signInWithGoogle = async () => {
+  try {
+    return await signInWithPopup(auth, googleAuthProvider);
+  } catch (error: any) {
+    if (error?.code === 'auth/popup-blocked' || error?.code === 'auth/cancelled-popup-request') {
+      console.warn('Popup bloccato dal browser, avvio l\'accesso tramite redirect...');
+      await signInWithRedirect(auth, googleAuthProvider);
+      return;
+    }
+    throw error;
+  }
+};
+
+export const signInWithGoogleRedirect = () => signInWithRedirect(auth, googleAuthProvider);
+
+export const checkRedirectResult = async () => {
+  try {
+    return await getRedirectResult(auth);
+  } catch (error) {
+    console.error('Errore nel recupero del risultato di redirect:', error);
+    throw error;
+  }
+};
+
 export const logout = () => signOut(auth);
+
+export const signInAnon = () => signInAnonymously(auth);
+
+export interface AuthErrorDetails {
+  code: string;
+  isUnauthorizedDomain: boolean;
+  isPopupBlocked: boolean;
+  isOperationNotAllowed: boolean;
+  message: string;
+}
+
+export function parseAuthError(error: any): AuthErrorDetails {
+  const code = error?.code || '';
+  const message = error?.message || String(error);
+
+  const isUnauthorizedDomain = code === 'auth/unauthorized-domain' || message.includes('unauthorized-domain');
+  const isPopupBlocked = code === 'auth/popup-blocked' || code === 'auth/cancelled-popup-request';
+  const isOperationNotAllowed = code === 'auth/operation-not-allowed';
+
+  let userFriendlyMessage = 'Si è verificato un errore durante l\'accesso con Google.';
+  if (isUnauthorizedDomain) {
+    userFriendlyMessage = `Il dominio "${window.location.hostname}" non è autorizzato in Firebase Console.`;
+  } else if (isPopupBlocked) {
+    userFriendlyMessage = 'Finestra popup bloccata dal browser. Prova con l\'accesso via redirect.';
+  } else if (isOperationNotAllowed) {
+    userFriendlyMessage = 'L\'accesso con Google non è abilitato nel pannello Firebase Authentication.';
+  }
+
+  return {
+    code,
+    isUnauthorizedDomain,
+    isPopupBlocked,
+    isOperationNotAllowed,
+    message: userFriendlyMessage
+  };
+}
 
 export enum OperationType {
   CREATE = 'create',
@@ -73,4 +157,3 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   console.error('Firestore User Message:', userFriendlyMessage);
   return userFriendlyMessage;
 }
-
